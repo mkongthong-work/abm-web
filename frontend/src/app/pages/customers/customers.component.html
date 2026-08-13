@@ -1,0 +1,41 @@
+<div class="page-header">
+  <div class="page-title">ลูกค้า</div>
+  <div class="page-meta">{{ customers.length }} ราย</div>
+</div>
+
+<div class="card">
+  <h3>เพิ่มลูกค้าใหม่</h3>
+  <form (ngSubmit)="submit()">
+    <div class="grid">
+      <label>ชื่อลูกค้า *<input [(ngModel)]="form.name" name="name" required /></label>
+      <label>ที่อยู่<input [(ngModel)]="form.address" name="address" /></label>
+      <label>เลขผู้เสียภาษี<input [(ngModel)]="form.tax_id" name="tax_id" /></label>
+      <label>โทรศัพท์<input [(ngModel)]="form.phone" name="phone" /></label>
+      <label>อีเมล<input [(ngModel)]="form.email" name="email" /></label>
+    </div>
+    <button type="submit">+ เพิ่มลูกค้า</button>
+  </form>
+</div>
+
+<p class="error" *ngIf="error">{{ error }}</p>
+<p *ngIf="loading">กำลังโหลด...</p>
+
+<div class="table-card" *ngIf="!loading">
+  <table>
+    <thead>
+      <tr><th>ชื่อลูกค้า</th><th>เลขผู้เสียภาษี</th><th>โทรศัพท์</th><th>อีเมล</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let c of customers">
+        <td style="font-weight:600">{{ c.name }}</td>
+        <td class="mono">{{ c.tax_id || '-' }}</td>
+        <td>{{ c.phone || '-' }}</td>
+        <td>{{ c.email || '-' }}</td>
+        <td><button class="link" (click)="remove(c.id)">ลบ</button></td>
+      </tr>
+      <tr *ngIf="customers.length === 0">
+        <td colspan="5" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีลูกค้า — เพิ่มลูกค้ารายแรกด้านบน</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

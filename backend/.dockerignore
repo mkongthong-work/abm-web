@@ -1,0 +1,5 @@
+node_modules
+dist
+data/abm.db
+data/abm.db-journal
+*.log

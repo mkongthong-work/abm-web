@@ -1,0 +1,26 @@
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-name">ABM</div>
+      <div class="brand-sub">Accounting &amp; Billing</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a routerLink="/documents" routerLinkActive="active">เอกสาร</a>
+      <a routerLink="/customers" routerLinkActive="active">ลูกค้า</a>
+      <a routerLink="/items" routerLinkActive="active">สินค้า/บริการ</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a [href]="api.exportExcelUrl()">ส่งออก Excel</a>
+      <label class="import-btn">
+        นำเข้า Excel
+        <input type="file" accept=".xlsx" (change)="onImportFile($event)" hidden />
+      </label>
+    </div>
+  </aside>
+  <div class="main-area">
+    <p class="import-msg" *ngIf="importMsg">{{ importMsg }}</p>
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,99 @@
+<div class="page-header">
+  <div class="page-title">สร้างเอกสารใหม่</div>
+  <span class="badge badge-draft">ฉบับร่าง</span>
+</div>
+
+<div class="doc-tabs">
+  <div
+    *ngFor="let opt of typeOptions"
+    class="tab"
+    [class.active]="type === opt.value"
+    (click)="type = opt.value"
+  >{{ opt.label }}</div>
+</div>
+
+<form (ngSubmit)="submit()">
+  <div class="doc-form-layout">
+    <div class="doc-form-main">
+      <div class="card">
+        <div class="grid">
+          <label>
+            ลูกค้า
+            <select [(ngModel)]="customerId" name="customerId">
+              <option [ngValue]="null">-- เลือกลูกค้า --</option>
+              <option *ngFor="let c of customers" [ngValue]="c.id">{{ c.name }}</option>
+            </select>
+          </label>
+          <label>
+            VAT (%)
+            <input type="number" [(ngModel)]="vatRate" name="vatRate" />
+          </label>
+          <label>
+            ส่วนลด (บาท)
+            <input type="number" [(ngModel)]="discount" name="discount" />
+          </label>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0">
+        <div class="row-between" style="padding:14px 20px;border-bottom:1px solid #f0f2f2">
+          <h3 style="margin:0">รายการสินค้า/บริการ</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:180px">เลือกจากแคตตาล็อก</th>
+              <th>ชื่อรายการ</th>
+              <th class="num" style="width:80px">จำนวน</th>
+              <th style="width:80px">หน่วย</th>
+              <th class="num" style="width:110px">ราคา/หน่วย</th>
+              <th style="width:30px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let line of lines; let idx = index">
+              <td>
+                <select (change)="fillFromCatalog(idx, $any($event.target).value)">
+                  <option value="">-- เลือก --</option>
+                  <option *ngFor="let it of catalogItems" [value]="it.id">{{ it.name }}</option>
+                </select>
+              </td>
+              <td><input [(ngModel)]="line.name" [name]="'name'+idx" /></td>
+              <td><input type="number" min="0.01" step="any" [(ngModel)]="line.quantity" [name]="'qty'+idx" /></td>
+              <td><input [(ngModel)]="line.unit" [name]="'unit'+idx" /></td>
+              <td><input type="number" min="0" step="any" [(ngModel)]="line.unit_price" [name]="'price'+idx" /></td>
+              <td><button type="button" class="link" (click)="removeLine(idx)">✕</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="padding:12px 20px">
+          <button type="button" class="btn-secondary" (click)="addLine()">+ เพิ่มรายการ</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="block">
+          หมายเหตุ (แสดงบนเอกสาร)
+          <textarea [(ngModel)]="note" name="note" rows="3"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <div class="doc-form-side">
+      <div class="card">
+        <h3>สรุปยอด</h3>
+        <div class="totals">
+          <div class="totals-row"><span>รวมเป็นเงิน</span><span>{{ subtotal | number:'1.2-2' }}</span></div>
+          <div class="totals-row"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
+          <div class="totals-row"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>
+          <div class="totals-grand"><span>ยอดรวมสุทธิ</span><span>{{ total | number:'1.2-2' }}</span></div>
+        </div>
+      </div>
+
+      <p class="error" *ngIf="error">{{ error }}</p>
+      <button type="submit" [disabled]="saving" style="width:100%">
+        {{ saving ? 'กำลังบันทึก...' : 'บันทึกและสร้างเอกสาร' }}
+      </button>
+    </div>
+  </div>
+</form>

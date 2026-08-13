@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.angular/
+*.log
+backend/data/abm.db
+backend/data/abm.db-journal
+.env
+.DS_Store
+backend/pdf-service/venv/

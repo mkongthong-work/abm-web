@@ -1,0 +1,39 @@
+<div class="page-header">
+  <div class="page-title">สินค้า / บริการ</div>
+  <div class="page-meta">{{ items.length }} รายการ</div>
+</div>
+
+<div class="card">
+  <h3>เพิ่มรายการใหม่</h3>
+  <form (ngSubmit)="submit()">
+    <div class="grid">
+      <label>ชื่อสินค้า/บริการ *<input [(ngModel)]="form.name" name="name" required /></label>
+      <label>รายละเอียด<input [(ngModel)]="form.description" name="description" /></label>
+      <label>หน่วย<input [(ngModel)]="form.unit" name="unit" /></label>
+      <label>ราคาต่อหน่วย *<input [(ngModel)]="form.unit_price" name="unit_price" type="number" /></label>
+    </div>
+    <button type="submit">+ เพิ่มรายการ</button>
+  </form>
+</div>
+
+<p class="error" *ngIf="error">{{ error }}</p>
+<p *ngIf="loading">กำลังโหลด...</p>
+
+<div class="table-card" *ngIf="!loading">
+  <table>
+    <thead>
+      <tr><th>ชื่อรายการ</th><th>หน่วย</th><th class="num">ราคา/หน่วย</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let i of items">
+        <td style="font-weight:600">{{ i.name }}</td>
+        <td>{{ i.unit }}</td>
+        <td class="num">{{ i.unit_price | number:'1.2-2' }}</td>
+        <td><button class="link" (click)="remove(i.id)">ลบ</button></td>
+      </tr>
+      <tr *ngIf="items.length === 0">
+        <td colspan="4" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีสินค้า/บริการ — เพิ่มรายการแรกด้านบน</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

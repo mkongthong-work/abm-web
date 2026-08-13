@@ -1,0 +1,39 @@
+<div class="page-header">
+  <div class="page-title">เอกสาร</div>
+  <div class="page-meta">{{ documents.length }} ฉบับ</div>
+  <div class="page-actions">
+    <a routerLink="/documents/new"><button>+ สร้างเอกสาร</button></a>
+  </div>
+</div>
+
+<p *ngIf="loading">กำลังโหลด...</p>
+
+<div class="table-card" *ngIf="!loading">
+  <table>
+    <thead>
+      <tr>
+        <th>ประเภท</th>
+        <th>เลขที่</th>
+        <th>ลูกค้า</th>
+        <th class="num">ยอดรวม</th>
+        <th>วันที่</th>
+        <th>สถานะ</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let d of documents">
+        <td>{{ typeLabel[d.doc_type] }}</td>
+        <td class="mono">{{ d.doc_number }}</td>
+        <td>{{ d.customer_name }}</td>
+        <td class="num">{{ d.total | number:'1.2-2' }}</td>
+        <td>{{ d.issue_date }}</td>
+        <td><span class="badge" [ngClass]="statusBadge[d.status]">{{ statusLabel[d.status] || d.status }}</span></td>
+        <td><a [href]="pdfUrl(d.id)" target="_blank">PDF</a></td>
+      </tr>
+      <tr *ngIf="documents.length === 0">
+        <td colspan="7" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีเอกสาร — เริ่มสร้างเอกสารแรกได้เลย</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
