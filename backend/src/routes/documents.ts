@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { db, row, rows } from "../db";
+import { many, one, run } from "../db";
 import { generatePdf } from "../pdf";
 
 const router = Router();
@@ -13,30 +13,31 @@ const DOC_LABELS: Record<string, { th: string; prefix: string }> = {
   receipt: { th: "ใบเสร็จรับเงิน", prefix: "RC" },
 };
 
-function nextDocNumber(docType: string): string {
+async function nextDocNumber(docType: string): Promise<string> {
   const prefix = DOC_LABELS[docType].prefix;
   const year = new Date().getFullYear().toString();
   const like = `${prefix}-${year}-%`;
-  const r: any = db
-    .prepare("SELECT doc_number FROM documents WHERE doc_number LIKE ? ORDER BY id DESC LIMIT 1")
-    .get(like);
+  const r = await one<{ doc_number: string }>(
+    "SELECT doc_number FROM documents WHERE doc_number LIKE $1 ORDER BY id DESC LIMIT 1",
+    [like]
+  );
   let seq = 1;
   if (r) {
-    const last = parseInt(r.doc_number.split("-").pop(), 10);
+    const last = parseInt(r.doc_number.split("-").pop() as string, 10);
     seq = last + 1;
   }
   return `${prefix}-${year}-${String(seq).padStart(4, "0")}`;
 }
 
 function calcTotals(items: any[], discount: number, vatRate: number) {
-  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+  const subtotal = items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0);
   const afterDiscount = subtotal - discount;
   const vat = (afterDiscount * vatRate) / 100;
   const total = afterDiscount + vat;
   return { subtotal, discount, vat, total };
 }
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const type = req.query.type as string | undefined;
   let q = `SELECT d.*, c.name AS customer_name,
               COALESCE((SELECT SUM(quantity * unit_price) FROM document_items WHERE document_id = d.id), 0) AS subtotal
@@ -44,31 +45,32 @@ router.get("/", (req, res) => {
             JOIN customers c ON c.id = d.customer_id`;
   const params: any[] = [];
   if (type) {
-    q += " WHERE d.doc_type = ?";
+    q += " WHERE d.doc_type = $1";
     params.push(type);
   }
   q += " ORDER BY d.id DESC";
-  const r: any[] = db.prepare(q).all(...params);
+  const r = await many<any>(q, params);
   const withTotals = r.map((d) => {
-    const afterDiscount = d.subtotal - (d.discount || 0);
-    const vat = (afterDiscount * (d.vat_rate || 0)) / 100;
+    const afterDiscount = Number(d.subtotal) - Number(d.discount || 0);
+    const vat = (afterDiscount * Number(d.vat_rate || 0)) / 100;
     return { ...d, total: afterDiscount + vat };
   });
   res.json(withTotals);
 });
 
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const doc: any = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
+  const doc = await one<any>("SELECT * FROM documents WHERE id = $1", [id]);
   if (!doc) return res.status(404).json({ error: "ไม่พบเอกสาร" });
-  const items = rows(
-    db.prepare("SELECT * FROM document_items WHERE document_id = ? ORDER BY sort_order").all(id)
+  const items = await many(
+    "SELECT * FROM document_items WHERE document_id = $1 ORDER BY sort_order",
+    [id]
   );
-  const totals = calcTotals(items, doc.discount, doc.vat_rate);
-  res.json({ ...row(doc), items, ...totals });
+  const totals = calcTotals(items, Number(doc.discount), Number(doc.vat_rate));
+  res.json({ ...doc, items, ...totals });
 });
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const {
     type,
     customer_id,
@@ -83,12 +85,12 @@ router.post("/", (req, res) => {
   } = req.body;
 
   if (!type || !DOC_LABELS[type]) return res.status(400).json({ error: "ประเภทเอกสารไม่ถูกต้อง" });
-  const customer: any = db.prepare("SELECT * FROM customers WHERE id = ?").get(customer_id);
+  const customer = await one("SELECT * FROM customers WHERE id = $1", [customer_id]);
   if (!customer) return res.status(400).json({ error: "ไม่พบลูกค้า" });
   if (!Array.isArray(lines) || lines.length === 0)
     return res.status(400).json({ error: "ต้องมีรายการสินค้าอย่างน้อย 1 รายการ" });
 
-  const finalDocNumber = doc_number || nextDocNumber(type);
+  const finalDocNumber = doc_number || (await nextDocNumber(type));
   const finalIssueDate = issue_date || new Date().toISOString().slice(0, 10);
   let finalDueDate = due_date || null;
   if (!finalDueDate && type === "invoice") {
@@ -97,13 +99,12 @@ router.post("/", (req, res) => {
     finalDueDate = d.toISOString().slice(0, 10);
   }
 
-  const result = db
-    .prepare(
-      `INSERT INTO documents (doc_type, doc_number, customer_id, issue_date, due_date,
-                               ref_doc_id, vat_rate, discount, note, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
-    )
-    .run(
+  const doc = await one<any>(
+    `INSERT INTO documents (doc_type, doc_number, customer_id, issue_date, due_date,
+                             ref_doc_id, vat_rate, discount, note, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft')
+     RETURNING *`,
+    [
       type,
       finalDocNumber,
       customer_id,
@@ -112,40 +113,42 @@ router.post("/", (req, res) => {
       ref_doc_id ?? null,
       vat_rate,
       discount,
-      note ?? null
-    );
-  const docId = result.lastInsertRowid;
-
-  const insertItem = db.prepare(
-    `INSERT INTO document_items (document_id, name, description, quantity, unit, unit_price, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+      note ?? null,
+    ]
   );
-  lines.forEach((line: any, idx: number) => {
-    insertItem.run(
-      docId,
-      line.name,
-      line.description ?? null,
-      Number(line.quantity),
-      line.unit ?? "ชิ้น",
-      Number(line.unit_price),
-      idx
-    );
-  });
+  const docId = doc!.id;
 
-  const doc: any = db.prepare("SELECT * FROM documents WHERE id = ?").get(docId);
-  res.status(201).json(row(doc));
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    await run(
+      `INSERT INTO document_items (document_id, name, description, quantity, unit, unit_price, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        docId,
+        line.name,
+        line.description ?? null,
+        Number(line.quantity),
+        line.unit ?? "ชิ้น",
+        Number(line.unit_price),
+        idx,
+      ]
+    );
+  }
+
+  res.status(201).json(doc);
 });
 
 router.get("/:id/pdf", async (req, res) => {
   const id = Number(req.params.id);
-  const doc: any = db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
+  const doc = await one<any>("SELECT * FROM documents WHERE id = $1", [id]);
   if (!doc) return res.status(404).json({ error: "ไม่พบเอกสาร" });
-  const customer: any = db.prepare("SELECT * FROM customers WHERE id = ?").get(doc.customer_id);
-  const company: any = db.prepare("SELECT * FROM company WHERE id = 1").get();
-  const items = rows(
-    db.prepare("SELECT * FROM document_items WHERE document_id = ? ORDER BY sort_order").all(id)
+  const customer = await one("SELECT * FROM customers WHERE id = $1", [doc.customer_id]);
+  const company = await one("SELECT * FROM company WHERE id = 1");
+  const items = await many(
+    "SELECT * FROM document_items WHERE document_id = $1 ORDER BY sort_order",
+    [id]
   );
-  const totals = calcTotals(items, doc.discount, doc.vat_rate);
+  const totals = calcTotals(items, Number(doc.discount), Number(doc.vat_rate));
 
   const tmpOut = path.join(os.tmpdir(), `${doc.doc_number}-${Date.now()}.pdf`);
   try {

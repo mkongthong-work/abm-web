@@ -1,7 +1,7 @@
 import { Router } from "express";
 import ExcelJS from "exceljs";
 import multer from "multer";
-import { db, rows } from "../db";
+import { many, run } from "../db";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -10,7 +10,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.get("/export", async (req, res) => {
   const workbook = new ExcelJS.Workbook();
 
-  const customers = rows(db.prepare("SELECT * FROM customers ORDER BY id").all());
+  const customers = await many("SELECT * FROM customers ORDER BY id");
   const wsCustomers = workbook.addWorksheet("Customers");
   wsCustomers.columns = [
     { header: "id", key: "id", width: 8 },
@@ -22,7 +22,7 @@ router.get("/export", async (req, res) => {
   ];
   wsCustomers.addRows(customers);
 
-  const items = rows(db.prepare("SELECT * FROM items ORDER BY id").all());
+  const items = await many("SELECT * FROM items ORDER BY id");
   const wsItems = workbook.addWorksheet("Items");
   wsItems.columns = [
     { header: "id", key: "id", width: 8 },
@@ -33,13 +33,9 @@ router.get("/export", async (req, res) => {
   ];
   wsItems.addRows(items);
 
-  const documents = rows(
-    db
-      .prepare(
-        `SELECT d.*, c.name AS customer_name FROM documents d
-         JOIN customers c ON c.id = d.customer_id ORDER BY d.id`
-      )
-      .all()
+  const documents = await many(
+    `SELECT d.*, c.name AS customer_name FROM documents d
+     JOIN customers c ON c.id = d.customer_id ORDER BY d.id`
   );
   const wsDocs = workbook.addWorksheet("Documents");
   wsDocs.columns = [
@@ -56,8 +52,8 @@ router.get("/export", async (req, res) => {
   ];
   wsDocs.addRows(documents);
 
-  const docItems = rows(
-    db.prepare("SELECT * FROM document_items ORDER BY document_id, sort_order").all()
+  const docItems = await many(
+    "SELECT * FROM document_items ORDER BY document_id, sort_order"
   );
   const wsDocItems = workbook.addWorksheet("DocumentItems");
   wsDocItems.columns = [
@@ -94,38 +90,49 @@ router.post("/import", upload.single("file"), async (req, res) => {
 
   const wsCustomers = workbook.getWorksheet("Customers");
   if (wsCustomers) {
-    const upsert = db.prepare(
-      `INSERT INTO customers (id, name, address, tax_id, phone, email)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         name=excluded.name, address=excluded.address, tax_id=excluded.tax_id,
-         phone=excluded.phone, email=excluded.email`
-    );
+    const rowsToUpsert: any[][] = [];
     wsCustomers.eachRow((r, rowNumber) => {
       if (rowNumber === 1) return; // header
       const [, id, name, address, tax_id, phone, email] = r.values as any[];
       if (!name) return;
-      upsert.run(id ?? null, name, address ?? null, tax_id ?? null, phone ?? null, email ?? null);
-      customerCount++;
+      rowsToUpsert.push([id ?? null, name, address ?? null, tax_id ?? null, phone ?? null, email ?? null]);
     });
+    for (const row of rowsToUpsert) {
+      await run(
+        `INSERT INTO customers (id, name, address, tax_id, phone, email)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name, address = EXCLUDED.address, tax_id = EXCLUDED.tax_id,
+           phone = EXCLUDED.phone, email = EXCLUDED.email`,
+        row
+      );
+      customerCount++;
+    }
+    // sync sequence กันชนกับ id ที่ import เข้ามาแบบระบุเอง
+    await run("SELECT setval('customers_id_seq', COALESCE((SELECT MAX(id) FROM customers), 1))");
   }
 
   const wsItems = workbook.getWorksheet("Items");
   if (wsItems) {
-    const upsert = db.prepare(
-      `INSERT INTO items (id, name, description, unit, unit_price)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         name=excluded.name, description=excluded.description, unit=excluded.unit,
-         unit_price=excluded.unit_price`
-    );
+    const rowsToUpsert: any[][] = [];
     wsItems.eachRow((r, rowNumber) => {
       if (rowNumber === 1) return;
       const [, id, name, description, unit, unit_price] = r.values as any[];
       if (!name) return;
-      upsert.run(id ?? null, name, description ?? null, unit ?? "ชิ้น", Number(unit_price) || 0);
-      itemCount++;
+      rowsToUpsert.push([id ?? null, name, description ?? null, unit ?? "ชิ้น", Number(unit_price) || 0]);
     });
+    for (const row of rowsToUpsert) {
+      await run(
+        `INSERT INTO items (id, name, description, unit, unit_price)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name, description = EXCLUDED.description, unit = EXCLUDED.unit,
+           unit_price = EXCLUDED.unit_price`,
+        row
+      );
+      itemCount++;
+    }
+    await run("SELECT setval('items_id_seq', COALESCE((SELECT MAX(id) FROM items), 1))");
   }
 
   res.json({ ok: true, customers_imported: customerCount, items_imported: itemCount });

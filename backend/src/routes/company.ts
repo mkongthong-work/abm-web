@@ -1,27 +1,28 @@
 import { Router } from "express";
-import { db, row } from "../db";
+import { one, run } from "../db";
 
 const router = Router();
 
-router.get("/", (req, res) => {
-  const r = db.prepare("SELECT * FROM company WHERE id = 1").get();
-  res.json(row(r));
+router.get("/", async (req, res) => {
+  const r = await one("SELECT * FROM company WHERE id = 1");
+  res.json(r);
 });
 
-router.put("/", (req, res) => {
+router.put("/", async (req, res) => {
   const { name, address, tax_id, phone, email, logo_path } = req.body;
-  db.prepare(
+  await run(
     `UPDATE company SET
-       name = COALESCE(?, name),
-       address = COALESCE(?, address),
-       tax_id = COALESCE(?, tax_id),
-       phone = COALESCE(?, phone),
-       email = COALESCE(?, email),
-       logo_path = COALESCE(?, logo_path)
-     WHERE id = 1`
-  ).run(name ?? null, address ?? null, tax_id ?? null, phone ?? null, email ?? null, logo_path ?? null);
-  const r = db.prepare("SELECT * FROM company WHERE id = 1").get();
-  res.json(row(r));
+       name = COALESCE($1, name),
+       address = COALESCE($2, address),
+       tax_id = COALESCE($3, tax_id),
+       phone = COALESCE($4, phone),
+       email = COALESCE($5, email),
+       logo_path = COALESCE($6, logo_path)
+     WHERE id = 1`,
+    [name ?? null, address ?? null, tax_id ?? null, phone ?? null, email ?? null, logo_path ?? null]
+  );
+  const r = await one("SELECT * FROM company WHERE id = 1");
+  res.json(r);
 });
 
 export default router;

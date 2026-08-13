@@ -1,39 +1,67 @@
-import { DatabaseSync } from "node:sqlite";
+import { Pool, QueryResultRow, types } from "pg";
+
+// NUMERIC ของ Postgres ปกติจะถูกส่งกลับเป็น string (กัน precision loss)
+// แต่แอปนี้ใช้เป็นตัวเลขเงิน/จำนวนตรง ๆ จึงแปลงเป็น float ให้เลยตั้งแต่ตอนอ่าน
+types.setTypeParser(1700, (val: string) => parseFloat(val));
 import fs from "fs";
 import path from "path";
 
 const DATA_DIR = path.join(__dirname, "..", "data");
-export const DB_PATH = process.env.ABM_DB_PATH || path.join(DATA_DIR, "abm.db");
-const SCHEMA_PATH = path.join(DATA_DIR, "schema.sql");
+const SCHEMA_PATH = path.join(DATA_DIR, "schema.postgres.sql");
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-export const db = new DatabaseSync(DB_PATH);
-db.exec("PRAGMA foreign_keys = ON");
-
-// เตรียมฐานข้อมูลเมื่อเริ่มระบบครั้งแรก
-const schema = fs.readFileSync(SCHEMA_PATH, "utf-8");
-db.exec(schema);
-
-const companyRow = db.prepare("SELECT id FROM company WHERE id = 1").get();
-if (!companyRow) {
-  db.prepare(
-    `INSERT INTO company (id, name, address, tax_id, phone, email, logo_path)
-     VALUES (1, ?, ?, ?, ?, ?, NULL)`
-  ).run(
-    "บริษัท ตัวอย่าง จำกัด (Sample Co., Ltd.)",
-    "123 ถนนตัวอย่าง แขวงตัวอย่าง เขตตัวอย่าง กรุงเทพฯ 10110",
-    "0000000000000",
-    "02-000-0000",
-    "info@example.com"
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error(
+    "ไม่พบ DATABASE_URL — ตั้งค่า environment variable นี้เป็น connection string ของ Supabase " +
+      "(ดูวิธีได้ใน SUPABASE_SETUP.md)"
   );
-  console.log("[db] สร้างฐานข้อมูลใหม่พร้อมข้อมูลบริษัทตัวอย่าง (placeholder)");
 }
 
-// helper: แปลง row ให้เป็น plain object เสมอ (node:sqlite คืน null-prototype object)
-export function row<T = any>(r: any): T | null {
-  return r ? ({ ...r } as T) : null;
+// Supabase ต้องเชื่อมต่อผ่าน SSL เสมอ
+export const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+});
+
+// ---- helper functions (แทนที่ better-sqlite3 / node:sqlite API เดิม) ----
+export async function one<T extends QueryResultRow = any>(
+  sql: string,
+  params: any[] = []
+): Promise<T | null> {
+  const { rows } = await pool.query<T>(sql, params);
+  return rows[0] ?? null;
 }
-export function rows<T = any>(list: any[]): T[] {
-  return list.map((r) => ({ ...r }));
+
+export async function many<T extends QueryResultRow = any>(
+  sql: string,
+  params: any[] = []
+): Promise<T[]> {
+  const { rows } = await pool.query<T>(sql, params);
+  return rows;
+}
+
+export async function run(sql: string, params: any[] = []) {
+  return pool.query(sql, params);
+}
+
+// ---- เตรียมฐานข้อมูล (เรียกครั้งเดียวตอนเริ่ม server) ----
+export async function initDb(): Promise<void> {
+  const schema = fs.readFileSync(SCHEMA_PATH, "utf-8");
+  await pool.query(schema);
+
+  const company = await one("SELECT id FROM company WHERE id = 1");
+  if (!company) {
+    await run(
+      `INSERT INTO company (id, name, address, tax_id, phone, email, logo_path)
+       VALUES (1, $1, $2, $3, $4, $5, NULL)`,
+      [
+        "บริษัท ตัวอย่าง จำกัด (Sample Co., Ltd.)",
+        "123 ถนนตัวอย่าง แขวงตัวอย่าง เขตตัวอย่าง กรุงเทพฯ 10110",
+        "0000000000000",
+        "02-000-0000",
+        "info@example.com",
+      ]
+    );
+    console.log("[db] สร้างฐานข้อมูลใหม่พร้อมข้อมูลบริษัทตัวอย่าง (placeholder)");
+  }
 }
