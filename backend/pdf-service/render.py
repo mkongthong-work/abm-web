@@ -14,6 +14,13 @@ DOC_LABELS = {
     "receipt": {"th": "ใบเสร็จรับเงิน / ใบกำกับภาษี", "en": "RECEIPT / TAX INVOICE"},
 }
 
+# สีเริ่มต้นของแต่ละประเภทเอกสาร ใช้เมื่อยังไม่ได้ตั้งค่าในหน้า "ตั้งค่าบริษัท"
+DEFAULT_DOC_COLORS = {
+    "quotation": "#0d9488",
+    "invoice": "#2563eb",
+    "receipt": "#7c3aed",
+}
+
 THAI_MONTHS = [
     "", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
     "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
@@ -41,7 +48,26 @@ def esc(v):
     return str(v).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-CSS = f"""
+def _hex_to_rgb(hex_color):
+    h = (hex_color or "").lstrip("#")
+    if len(h) != 6:
+        h = "0d9488"
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def tint(hex_color, amount):
+    """ผสมสีเข้มกับสีขาวตามสัดส่วน amount (0-1) เพื่อให้ได้สีอ่อนไว้ทำพื้นหลัง/แถบลาย"""
+    r, g, b = _hex_to_rgb(hex_color)
+    r = round(r + (255 - r) * amount)
+    g = round(g + (255 - g) * amount)
+    b = round(b + (255 - b) * amount)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def build_css(accent):
+    row_stripe = tint(accent, 0.95)
+    soft_bg = tint(accent, 0.93)
+    return f"""
 @font-face {{
     font-family: 'Sarabun';
     src: url('file://{FONT_DIR}/Sarabun-Regular.ttf');
@@ -67,19 +93,30 @@ body {{
     font-family: 'Sarabun', sans-serif;
     font-size: 13px;
     color: #1a1a1a;
+    margin: 0;
+    /* A4 (297mm) หัก margin บน-ล่างของ @page (20mm x 2) = พื้นที่เนื้อหาสูง 257mm ต่อหน้า
+       body มีลูกแค่ 2 กลุ่ม (.page-content, .page-bottom) แล้วใช้ justify-content: space-between
+       เพื่อดันกลุ่มท้าย (ลงนาม + footer note) ไปชิดขอบล่างของกระดาษ
+       หมายเหตุ: WeasyPrint ไม่รองรับ margin:auto บน flex item ให้ดันแทน ต้องใช้ justify-content แทน
+       ถ้าเนื้อหายาวเกินหนึ่งหน้าอยู่แล้ว ระยะนี้จะไม่มีผล (ไม่มีพื้นที่เหลือให้ดัน) เอกสารจะไหลต่อตามปกติ */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 257mm;
 }}
+.page-bottom {{ flex: none; }}
 .header {{
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 3px solid #0d9488;
+    border-bottom: 3px solid {accent};
     padding-bottom: 12px;
     margin-bottom: 18px;
 }}
 .company-block .company-name {{
     font-size: 16px;
     font-weight: bold;
-    color: #0d9488;
+    color: {accent};
 }}
 .company-block .meta {{
     font-size: 11px;
@@ -92,7 +129,7 @@ body {{
 }}
 .doc-title h1 {{
     font-size: 22px;
-    color: #0d9488;
+    color: {accent};
     margin: 0;
 }}
 .doc-title .doc-number {{
@@ -110,7 +147,7 @@ body {{
 }}
 .info-box h3 {{
     font-size: 11px;
-    color: #0d9488;
+    color: {accent};
     text-transform: uppercase;
     letter-spacing: .04em;
     margin: 0 0 6px 0;
@@ -125,7 +162,7 @@ table.items {{
     margin-top: 8px;
 }}
 table.items th {{
-    background: #0d9488;
+    background: {accent};
     color: #fff;
     font-weight: normal;
     font-size: 12px;
@@ -139,7 +176,7 @@ table.items td {{
     vertical-align: top;
 }}
 table.items th.num, table.items td.num {{ text-align: right; }}
-table.items tr:nth-child(even) td {{ background: #f7fdfc; }}
+table.items tr:nth-child(even) td {{ background: {row_stripe}; }}
 .totals {{
     width: 100%;
     margin-top: 10px;
@@ -157,25 +194,26 @@ table.items tr:nth-child(even) td {{ background: #f7fdfc; }}
 .totals td.label {{ text-align: left; color: #444; }}
 .totals td.value {{ text-align: right; }}
 .totals tr.grand td {{
-    border-top: 2px solid #0d9488;
+    border-top: 2px solid {accent};
     font-weight: bold;
     font-size: 15px;
-    color: #0d9488;
+    color: {accent};
     padding-top: 8px;
 }}
 .note-box {{
     margin-top: 20px;
     padding: 10px 12px;
-    background: #f7fdfc;
-    border-left: 3px solid #0d9488;
+    background: {soft_bg};
+    border-left: 3px solid {accent};
     font-size: 12px;
     color: #333;
 }}
 .signatures {{
     display: flex;
     justify-content: space-between;
-    margin-top: 60px;
+    margin-top: 40px;
 }}
+.signatures.single {{ justify-content: center; }}
 .sign-box {{
     width: 40%;
     text-align: center;
@@ -195,103 +233,110 @@ table.items tr:nth-child(even) td {{ background: #f7fdfc; }}
 }}
 """
 
+
 TEMPLATE = """
 <html>
 <head><meta charset="utf-8"><style>{css}</style></head>
 <body>
-  <div class="header">
-    <div class="company-block">
-      <div class="company-name">{company_name}</div>
-      <div class="meta">
-        {company_address}<br>
-        เลขผู้เสียภาษี: {company_tax_id} &nbsp;|&nbsp; โทร: {company_phone}<br>
-        อีเมล: {company_email}
+  <div class="page-content">
+    <div class="header">
+      <div class="company-block">
+        <div class="company-name">{company_name}</div>
+        <div class="meta">
+          {company_address}<br>
+          เลขผู้เสียภาษี: {company_tax_id} &nbsp;|&nbsp; โทร: {company_phone}<br>
+          อีเมล: {company_email}
+        </div>
+      </div>
+      <div class="doc-title">
+        <h1>{doc_label_th}</h1>
+        <div class="doc-number">{doc_label_en} No. {doc_number}</div>
       </div>
     </div>
-    <div class="doc-title">
-      <h1>{doc_label_th}</h1>
-      <div class="doc-number">{doc_label_en} No. {doc_number}</div>
-    </div>
-  </div>
 
-  <div class="info-grid">
-    <div class="info-box">
-      <h3>ลูกค้า / Customer</h3>
-      <div class="line name">{customer_name}</div>
-      <div class="line">{customer_address}</div>
-      <div class="line">เลขผู้เสียภาษี: {customer_tax_id}</div>
-      <div class="line">โทร: {customer_phone} &nbsp; อีเมล: {customer_email}</div>
+    <div class="info-grid">
+      <div class="info-box">
+        <h3>ลูกค้า / Customer</h3>
+        <div class="line name">{customer_name}</div>
+        <div class="line">{customer_address}</div>
+        <div class="line">เลขผู้เสียภาษี: {customer_tax_id}</div>
+        <div class="line">โทร: {customer_phone} &nbsp; อีเมล: {customer_email}</div>
+      </div>
+      <div class="info-box">
+        <h3>รายละเอียดเอกสาร</h3>
+        <div class="line">วันที่ออกเอกสาร: {issue_date_th}</div>
+        <div class="line">{due_date_row}</div>
+      </div>
     </div>
-    <div class="info-box">
-      <h3>รายละเอียดเอกสาร</h3>
-      <div class="line">วันที่ออกเอกสาร: {issue_date_th}</div>
-      <div class="line">{due_date_row}</div>
-      <div class="line">สถานะ: {status_th}</div>
-    </div>
-  </div>
 
-  <table class="items">
-    <thead>
-      <tr>
-        <th style="width:36px;">ลำดับ</th>
-        <th>รายการ</th>
-        <th class="num" style="width:60px;">จำนวน</th>
-        <th style="width:60px;">หน่วย</th>
-        <th class="num" style="width:90px;">ราคา/หน่วย</th>
-        <th class="num" style="width:100px;">จำนวนเงิน</th>
-      </tr>
-    </thead>
-    <tbody>
-      {item_rows}
-    </tbody>
-  </table>
-
-  <div class="totals">
-    <table>
-      <tr><td class="label">รวมเป็นเงิน</td><td class="value">{subtotal} บาท</td></tr>
-      <tr><td class="label">ส่วนลด</td><td class="value">-{discount} บาท</td></tr>
-      <tr><td class="label">ภาษีมูลค่าเพิ่ม ({vat_rate}%)</td><td class="value">{vat} บาท</td></tr>
-      <tr class="grand"><td class="label">ยอดรวมสุทธิ</td><td class="value">{total} บาท</td></tr>
+    <table class="items">
+      <thead>
+        <tr>
+          {items_thead}
+        </tr>
+      </thead>
+      <tbody>
+        {item_rows}
+      </tbody>
     </table>
+
+    <div class="totals">
+      <table>
+        <tr><td class="label">รวมเป็นเงิน</td><td class="value">{subtotal} บาท</td></tr>
+        {discount_row}
+        {vat_row}
+        <tr class="grand"><td class="label">ยอดรวมสุทธิ</td><td class="value">{total} บาท</td></tr>
+      </table>
+    </div>
+
+    {note_block}
   </div>
 
-  {note_block}
-
-  <div class="signatures">
-    <div class="sign-box">
-      <div class="sign-line">ผู้เสนอราคา / ผู้ออกเอกสาร</div>
-      วันที่ ......../......../..........
-    </div>
-    <div class="sign-box">
-      <div class="sign-line">ผู้อนุมัติ / ผู้รับเอกสาร</div>
-      วันที่ ......../......../..........
-    </div>
+  <div class="page-bottom">
+    {signatures_block}
+    <div class="footer-note">เอกสารนี้สร้างจากระบบ ABM (Accounting &amp; Billing Management) POC — ตัวอย่างเพื่อการทดสอบเท่านั้น</div>
   </div>
-
-  <div class="footer-note">เอกสารนี้สร้างจากระบบ ABM (Accounting &amp; Billing Management) POC — ตัวอย่างเพื่อการทดสอบเท่านั้น</div>
 </body>
 </html>
 """
 
-STATUS_TH = {"draft": "ฉบับร่าง", "sent": "ส่งแล้ว", "paid": "ชำระแล้ว", "void": "ยกเลิก"}
-
-
 def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, total, out_path):
-    labels = DOC_LABELS[doc["doc_type"]]
+    doc_type = doc["doc_type"]
+    labels = DOC_LABELS[doc_type]
+    accent = (company or {}).get(f"{doc_type}_color") or DEFAULT_DOC_COLORS.get(doc_type, "#0d9488")
+
+    # ซ่อนคอลัมน์ "จำนวน" / "หน่วย" ในตารางได้ตาม toggle ที่ตั้งไว้ตอนกรอกฟอร์ม (ค่าเริ่มต้น: แสดงทั้งคู่)
+    show_qty = doc.get("show_quantity")
+    show_qty = True if show_qty is None else bool(show_qty)
+    show_unit_col = doc.get("show_unit")
+    show_unit_col = True if show_unit_col is None else bool(show_unit_col)
+
+    thead_cells = ['<th style="width:36px;">ลำดับ</th>', "<th>รายการ</th>"]
+    if show_qty:
+        thead_cells.append('<th class="num" style="width:60px;">จำนวน</th>')
+    if show_unit_col:
+        thead_cells.append('<th style="width:60px;">หน่วย</th>')
+    thead_cells.append('<th class="num" style="width:90px;">ราคา/หน่วย</th>')
+    thead_cells.append('<th class="num" style="width:100px;">จำนวนเงิน</th>')
+    items_thead = "".join(thead_cells)
 
     item_rows = []
     for idx, it in enumerate(items, start=1):
         amount = it["quantity"] * it["unit_price"]
-        item_rows.append(f"""
-          <tr>
-            <td>{idx}</td>
-            <td>{esc(it['name'])}{'<br><span style="color:#888;font-size:11px;">' + esc(it['description']) + '</span>' if it['description'] else ''}</td>
-            <td class="num">{it['quantity']:,.2f}</td>
-            <td>{esc(it['unit'])}</td>
-            <td class="num">{money(it['unit_price'])}</td>
-            <td class="num">{money(amount)}</td>
-          </tr>
-        """)
+        desc_html = ""
+        if it["description"]:
+            desc_html = f'<br><span style="color:#888;font-size:11px;">{esc(it["description"])}</span>'
+        cells = [
+            f"<td>{idx}</td>",
+            f"<td>{esc(it['name'])}{desc_html}</td>",
+        ]
+        if show_qty:
+            cells.append(f'<td class="num">{it["quantity"]:,.2f}</td>')
+        if show_unit_col:
+            cells.append(f"<td>{esc(it['unit'])}</td>")
+        cells.append(f'<td class="num">{money(it["unit_price"])}</td>')
+        cells.append(f'<td class="num">{money(amount)}</td>')
+        item_rows.append(f"<tr>{''.join(cells)}</tr>")
 
     due_date_row = ""
     if doc["due_date"]:
@@ -301,8 +346,38 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
     if doc["note"]:
         note_block = f'<div class="note-box"><strong>หมายเหตุ:</strong> {esc(doc["note"])}</div>'
 
+    # ช่องลงชื่อท้ายเอกสาร: แก้ข้อความหรือปิดฝั่งใดฝั่งหนึ่งได้จากหน้าฟอร์ม (ค่าว่าง = ไม่แสดงฝั่งนั้น)
+    sign_left = (doc.get("sign_left_label") or "").strip()
+    sign_right = (doc.get("sign_right_label") or "").strip()
+    sign_boxes = []
+    if sign_left:
+        sign_boxes.append(
+            f'<div class="sign-box"><div class="sign-line">{esc(sign_left)}</div>วันที่ ......../......../..........</div>'
+        )
+    if sign_right:
+        sign_boxes.append(
+            f'<div class="sign-box"><div class="sign-line">{esc(sign_right)}</div>วันที่ ......../......../..........</div>'
+        )
+    signatures_block = ""
+    if sign_boxes:
+        css_class = "signatures single" if len(sign_boxes) == 1 else "signatures"
+        signatures_block = f'<div class="{css_class}">{"".join(sign_boxes)}</div>'
+
+    # แสดงแถวส่วนลด/ภาษีมูลค่าเพิ่มเฉพาะตอนมีค่าจริง (ตรงกับ toggle เปิด/ปิดในหน้าฟอร์ม
+    # ซึ่งตอนปิดจะส่ง discount/vat_rate มาเป็น 0 — ไม่ใช่แค่ซ่อนในหน้าตัวอย่างแต่ไม่ซ่อนใน PDF)
+    discount_row = ""
+    if discount:
+        discount_row = f'<tr><td class="label">ส่วนลด</td><td class="value">-{money(discount)} บาท</td></tr>'
+
+    vat_row = ""
+    if doc["vat_rate"]:
+        vat_row = (
+            f'<tr><td class="label">ภาษีมูลค่าเพิ่ม ({doc["vat_rate"]:g}%)</td>'
+            f'<td class="value">{money(vat)} บาท</td></tr>'
+        )
+
     html_str = TEMPLATE.format(
-        css=CSS,
+        css=build_css(accent),
         company_name=esc(company["name"]),
         company_address=esc(company["address"]),
         company_tax_id=esc(company["tax_id"]),
@@ -318,14 +393,14 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
         customer_email=esc(customer["email"]) or "-",
         issue_date_th=thai_date(doc["issue_date"]),
         due_date_row=due_date_row,
-        status_th=STATUS_TH.get(doc["status"], doc["status"]),
+        items_thead=items_thead,
         item_rows="".join(item_rows),
         subtotal=money(subtotal),
-        discount=money(discount),
-        vat_rate=f"{doc['vat_rate']:g}",
-        vat=money(vat),
+        discount_row=discount_row,
+        vat_row=vat_row,
         total=money(total),
         note_block=note_block,
+        signatures_block=signatures_block,
     )
 
     HTML(string=html_str, base_url=BASE_DIR).write_pdf(out_path)

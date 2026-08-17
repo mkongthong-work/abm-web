@@ -1,7 +1,10 @@
 <div class="page-header">
-  <div class="page-title">สร้างเอกสารใหม่</div>
-  <span class="badge badge-draft">ฉบับร่าง</span>
+  <div class="page-title">{{ isEdit ? 'แก้ไขเอกสาร' : 'สร้างเอกสารใหม่' }}</div>
+  <span class="badge" [ngClass]="statusBadge[status]">{{ statusLabel[status] }}</span>
+  <span class="mono" style="color:#6b7878">{{ docNumberDisplay }}</span>
 </div>
+
+<p *ngIf="loadingDoc">กำลังโหลดเอกสาร...</p>
 
 <div class="doc-tabs">
   <div
@@ -11,72 +14,301 @@
     (click)="type = opt.value"
   >{{ opt.label }}</div>
 </div>
+<p class="type-change-hint" *ngIf="willRenumber">
+  <ng-container *ngIf="type !== originalType">เปลี่ยนประเภทเอกสารเป็น "{{ typeLabel[type] }}" — </ng-container>
+  <ng-container *ngIf="type === originalType">เปลี่ยนวันที่ออกเอกสารไปคนละเดือนกับเดิม — </ng-container>
+  ระบบจะออกเลขที่เอกสารใหม่ ({{ docNumberDisplay }}) เมื่อบันทึก
+</p>
 
-<form (ngSubmit)="submit()">
+<form (ngSubmit)="submit()" *ngIf="!loadingDoc">
   <div class="doc-form-layout">
     <div class="doc-form-main">
       <div class="card">
-        <div class="grid">
+        <h3>ข้อมูลเอกสาร</h3>
+        <label>
+          ลูกค้า
+          <select [(ngModel)]="customerId" name="customerId" [class.input-error]="!customerId">
+            <option [ngValue]="null">-- เลือกลูกค้า --</option>
+            <option *ngFor="let c of customers" [ngValue]="c.id">{{ c.name }}</option>
+          </select>
+        </label>
+        <p class="field-error" *ngIf="!customerId">ต้องเลือกลูกค้าก่อนบันทึกเอกสาร</p>
+
+        <div class="grid" style="margin-top:12px">
           <label>
-            ลูกค้า
-            <select [(ngModel)]="customerId" name="customerId">
-              <option [ngValue]="null">-- เลือกลูกค้า --</option>
-              <option *ngFor="let c of customers" [ngValue]="c.id">{{ c.name }}</option>
+            วันที่ออกเอกสาร
+            <div class="input-icon">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <input type="date" [(ngModel)]="issueDate" name="issueDate" />
+            </div>
+          </label>
+          <label>
+            สถานะ
+            <select [(ngModel)]="status" name="status">
+              <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
             </select>
           </label>
-          <label>
-            VAT (%)
-            <input type="number" [(ngModel)]="vatRate" name="vatRate" />
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="field-toggle-row">
+            <span style="font-size:12px;color:var(--color-text-soft)">{{ type === 'invoice' ? 'ครบกำหนดชำระ' : 'ยืนราคาถึง' }}</span>
+            <label class="toggle-switch">
+              <input type="checkbox" [ngModel]="dueDateEnabled" (ngModelChange)="onToggleDueDate($event)" name="dueDateEnabled" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="input-icon" *ngIf="dueDateEnabled" style="margin-top:6px">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <input type="date" [(ngModel)]="dueDate" name="dueDate" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>ตัวเลือกเอกสาร</h3>
+        <div class="option-row">
+          <label class="toggle-label">
+            <label class="toggle-switch">
+              <input type="checkbox" [ngModel]="vatEnabled" (ngModelChange)="onToggleVat($event)" name="vatEnabled" />
+              <span class="slider"></span>
+            </label>
+            <span>คิดภาษีมูลค่าเพิ่ม</span>
           </label>
-          <label>
-            ส่วนลด (บาท)
-            <input type="number" [(ngModel)]="discount" name="discount" />
+          <input type="number" class="option-input" [(ngModel)]="vatRate" name="vatRate" [class.field-disabled]="!vatEnabled" />
+          <span class="option-suffix">%</span>
+        </div>
+        <div class="option-row">
+          <label class="toggle-label">
+            <label class="toggle-switch">
+              <input type="checkbox" [ngModel]="discountEnabled" (ngModelChange)="onToggleDiscount($event)" name="discountEnabled" />
+              <span class="slider"></span>
+            </label>
+            <span>มีส่วนลดท้ายบิล</span>
+          </label>
+          <input type="number" class="option-input" [(ngModel)]="discount" name="discount" [class.field-disabled]="!discountEnabled" />
+        </div>
+        <div class="option-row">
+          <label class="toggle-label">
+            <label class="toggle-switch">
+              <input type="checkbox" [ngModel]="noteEnabled" (ngModelChange)="onToggleNote($event)" name="noteEnabled" />
+              <span class="slider"></span>
+            </label>
+            <span>แสดงหมายเหตุบนเอกสาร</span>
           </label>
         </div>
       </div>
 
       <div class="card" style="padding:0">
         <div class="row-between" style="padding:14px 20px;border-bottom:1px solid #f0f2f2">
-          <h3 style="margin:0">รายการสินค้า/บริการ</h3>
+          <h3 style="margin:0">รายการสินค้า/บริการ <span style="color:#a5aeae;font-weight:400">{{ previewLines.length }} รายการ</span></h3>
+          <div style="margin-left:auto;display:flex;gap:16px">
+            <label class="toggle-label">
+              <span>แสดงจำนวน</span>
+              <label class="toggle-switch">
+                <input type="checkbox" [(ngModel)]="showQuantity" name="showQuantity" />
+                <span class="slider"></span>
+              </label>
+            </label>
+            <label class="toggle-label">
+              <span>แสดงคอลัมน์หน่วย</span>
+              <label class="toggle-switch">
+                <input type="checkbox" [(ngModel)]="showUnit" name="showUnit" />
+                <span class="slider"></span>
+              </label>
+            </label>
+          </div>
         </div>
-        <table>
+        <table class="line-items-table">
           <thead>
             <tr>
-              <th style="width:180px">เลือกจากแคตตาล็อก</th>
               <th>ชื่อรายการ</th>
-              <th class="num" style="width:80px">จำนวน</th>
-              <th style="width:80px">หน่วย</th>
-              <th class="num" style="width:110px">ราคา/หน่วย</th>
-              <th style="width:30px"></th>
+              <th class="num" style="width:64px" *ngIf="showQuantity">จำนวน</th>
+              <th style="width:60px" *ngIf="showUnit">หน่วย</th>
+              <th class="num" style="width:90px">ราคา/หน่วย</th>
+              <th class="num" style="width:90px">จำนวนเงิน</th>
+              <th style="width:26px"></th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let line of lines; let idx = index">
               <td>
-                <select (change)="fillFromCatalog(idx, $any($event.target).value)">
-                  <option value="">-- เลือก --</option>
-                  <option *ngFor="let it of catalogItems" [value]="it.id">{{ it.name }}</option>
-                </select>
+                <input
+                  [ngModel]="line.name"
+                  (ngModelChange)="onNameInput(idx, $event)"
+                  [name]="'name'+idx"
+                  [attr.list]="'catalog-list-'+idx"
+                  placeholder="พิมพ์หรือเลือกรายการ"
+                  (keydown)="onLineKeydown($event, idx)"
+                />
+                <datalist [id]="'catalog-list-'+idx">
+                  <option *ngFor="let it of catalogItems" [value]="it.name"></option>
+                </datalist>
               </td>
-              <td><input [(ngModel)]="line.name" [name]="'name'+idx" /></td>
-              <td><input type="number" min="0.01" step="any" [(ngModel)]="line.quantity" [name]="'qty'+idx" /></td>
-              <td><input [(ngModel)]="line.unit" [name]="'unit'+idx" /></td>
+              <td *ngIf="showQuantity"><input type="number" min="0.01" step="any" [(ngModel)]="line.quantity" [name]="'qty'+idx" /></td>
+              <td *ngIf="showUnit"><input [(ngModel)]="line.unit" [name]="'unit'+idx" /></td>
               <td><input type="number" min="0" step="any" [(ngModel)]="line.unit_price" [name]="'price'+idx" /></td>
-              <td><button type="button" class="link" (click)="removeLine(idx)">✕</button></td>
+              <td class="num mono" style="color:#6b7878">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
+              <td><button type="button" class="link" (click)="removeLine(idx)">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              </button></td>
             </tr>
           </tbody>
         </table>
         <div style="padding:12px 20px">
           <button type="button" class="btn-secondary" (click)="addLine()">+ เพิ่มรายการ</button>
+          <span style="font-size:12px;color:#a5aeae;margin-left:12px">กด Tab เพื่อข้ามช่อง · Enter เพื่อเพิ่มแถวใหม่</span>
         </div>
       </div>
 
       <div class="card">
-        <label class="block">
-          หมายเหตุ (แสดงบนเอกสาร)
-          <textarea [(ngModel)]="note" name="note" rows="3"></textarea>
-        </label>
+        <h3>หมายเหตุ (แสดงบนเอกสาร)</h3>
+        <textarea
+          [(ngModel)]="note"
+          name="note"
+          rows="3"
+          placeholder="เช่น เงื่อนไขการชำระเงิน เลขบัญชี หรือระยะเวลารับประกัน"
+        ></textarea>
+        <p style="font-size:11px;color:#a5aeae;margin:6px 0 0" *ngIf="!noteEnabled">เปิด "แสดงหมายเหตุบนเอกสาร" ด้านบนเพื่อให้ข้อความนี้แสดงบนเอกสาร</p>
       </div>
+
+      <div class="card">
+        <h3>ลงชื่อท้ายเอกสาร</h3>
+        <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">แก้ข้อความช่องลงชื่อได้ทั้ง 2 ฝั่ง หรือปิดฝั่งใดฝั่งหนึ่งให้เหลือช่องเดียวก็ได้</p>
+
+        <div class="option-row">
+          <label class="toggle-label" style="flex:none;width:90px">
+            <label class="toggle-switch">
+              <input type="checkbox" [ngModel]="signLeftEnabled" (ngModelChange)="onToggleSignLeft($event)" name="signLeftEnabled" />
+              <span class="slider"></span>
+            </label>
+            <span>ฝั่งซ้าย</span>
+          </label>
+          <input
+            type="text"
+            style="flex:1"
+            [(ngModel)]="signLeftLabel"
+            name="signLeftLabel"
+            [class.field-disabled]="!signLeftEnabled"
+            placeholder="เช่น ผู้เสนอราคา / ผู้ออกเอกสาร"
+          />
+        </div>
+        <div class="option-row">
+          <label class="toggle-label" style="flex:none;width:90px">
+            <label class="toggle-switch">
+              <input type="checkbox" [ngModel]="signRightEnabled" (ngModelChange)="onToggleSignRight($event)" name="signRightEnabled" />
+              <span class="slider"></span>
+            </label>
+            <span>ฝั่งขวา</span>
+          </label>
+          <input
+            type="text"
+            style="flex:1"
+            [(ngModel)]="signRightLabel"
+            name="signRightLabel"
+            [class.field-disabled]="!signRightEnabled"
+            placeholder="เช่น ผู้อนุมัติ / ผู้รับเอกสาร"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-preview-col">
+      <div class="doc-preview-headerbar">
+        <div class="row-between">
+          <span class="doc-preview-title">ตัวอย่างเอกสาร <span class="badge badge-paid" style="margin-left:6px">อัปเดตอัตโนมัติ</span></span>
+          <div class="zoom-controls">
+            <button type="button" class="zoom-btn" (click)="zoomOut()">−</button>
+            <span class="zoom-value mono">{{ zoom }}%</span>
+            <button type="button" class="zoom-btn" (click)="zoomIn()">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-preview-wrap">
+        <div class="doc-preview-scale" [style.transform]="'scale(' + (zoom/100) + ')'">
+          <div class="doc-preview-page" [style.--accent]="accentColor">
+            <div class="doc-preview-top">
+              <div>
+                <div class="doc-preview-company">{{ company?.name || 'ชื่อบริษัทของคุณ' }}</div>
+                <div class="doc-preview-company-meta">
+                  <div *ngIf="company?.address">{{ company?.address }}</div>
+                  <div *ngIf="company?.tax_id">เลขผู้เสียภาษี: {{ company?.tax_id }}</div>
+                  <div *ngIf="company?.phone || company?.email">
+                    {{ company?.phone }}<span *ngIf="company?.phone && company?.email"> · </span>{{ company?.email }}
+                  </div>
+                </div>
+              </div>
+              <div class="doc-preview-doctitle">
+                <div class="type">{{ typeLabel[type] }}</div>
+                <div class="num">{{ docNumberDisplay }}</div>
+              </div>
+            </div>
+
+            <div class="doc-preview-meta">
+              <div>
+                <div class="label">ลูกค้า</div>
+                <div class="value" [class.doc-preview-empty]="!selectedCustomer">{{ selectedCustomer?.name || 'ยังไม่ได้เลือกลูกค้า' }}</div>
+              </div>
+              <div>
+                <div class="label">วันที่ออกเอกสาร</div>
+                <div class="value">{{ issueDate | date:'d MMM yyyy' }}</div>
+              </div>
+            </div>
+
+            <table class="doc-preview-table">
+              <thead>
+                <tr>
+                  <th>รายการ</th>
+                  <th class="num" style="width:36px" *ngIf="showQuantity">จำนวน</th>
+                  <th style="width:40px" *ngIf="showUnit">หน่วย</th>
+                  <th class="num" style="width:64px">จำนวนเงิน</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let line of previewLines">
+                  <td>{{ line.name }}</td>
+                  <td class="num" *ngIf="showQuantity">{{ line.quantity | number:'1.0-2' }}</td>
+                  <td *ngIf="showUnit">{{ line.unit }}</td>
+                  <td class="num">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
+                </tr>
+                <tr *ngIf="previewLines.length === 0">
+                  <td [attr.colspan]="2 + (showQuantity ? 1 : 0) + (showUnit ? 1 : 0)" class="doc-preview-empty">ยังไม่มีรายการสินค้า/บริการ</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="doc-preview-totals">
+              <div class="row"><span>รวมเป็นเงิน</span><span>{{ subtotal | number:'1.2-2' }}</span></div>
+              <div class="row" *ngIf="discountEnabled"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
+              <div class="row" *ngIf="vatEnabled"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>
+              <div class="grand"><span>ยอดรวมสุทธิ</span><span>{{ total | number:'1.2-2' }}</span></div>
+            </div>
+
+            <div class="doc-preview-note" *ngIf="noteEnabled && note">
+              <div class="label">หมายเหตุ</div>
+              <div>{{ note }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="warning-banner" *ngIf="validationMessage">ยังบันทึกไม่ได้ — {{ validationMessage }}</p>
+      <p class="error" *ngIf="error">{{ error }}</p>
+
+      <button type="submit" class="btn-primary-icon" [disabled]="saving || !canSave" style="width:100%">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        {{ saving ? 'กำลังบันทึก...' : (isEdit ? 'บันทึกการแก้ไข' : 'บันทึกและสร้างเอกสาร') }}
+      </button>
+      <button type="button" class="btn-secondary btn-icon" [disabled]="previewing" style="width:100%" (click)="preview()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        {{ previewing ? 'กำลังสร้างตัวอย่าง...' : 'ดูตัวอย่าง PDF เต็มหน้า' }}
+      </button>
+      <a *ngIf="isEdit" class="btn-secondary btn-icon" style="width:100%" [href]="api.downloadPdfUrl(editId!)" target="_blank">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        ดาวน์โหลด PDF
+      </a>
+      <button type="button" class="btn-plain" style="width:100%" (click)="cancel()">ยกเลิก</button>
     </div>
 
     <div class="doc-form-side">
@@ -84,16 +316,12 @@
         <h3>สรุปยอด</h3>
         <div class="totals">
           <div class="totals-row"><span>รวมเป็นเงิน</span><span>{{ subtotal | number:'1.2-2' }}</span></div>
-          <div class="totals-row"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
-          <div class="totals-row"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>
+          <div class="totals-row" *ngIf="discountEnabled"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
+          <div class="totals-row" *ngIf="vatEnabled"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>
           <div class="totals-grand"><span>ยอดรวมสุทธิ</span><span>{{ total | number:'1.2-2' }}</span></div>
         </div>
+        <p style="font-size:11px;color:#a5aeae;margin:10px 0 0">ศูนย์บาทถ้วน</p>
       </div>
-
-      <p class="error" *ngIf="error">{{ error }}</p>
-      <button type="submit" [disabled]="saving" style="width:100%">
-        {{ saving ? 'กำลังบันทึก...' : 'บันทึกและสร้างเอกสาร' }}
-      </button>
     </div>
   </div>
 </form>

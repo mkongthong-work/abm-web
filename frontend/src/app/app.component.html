@@ -1,18 +1,42 @@
 <div class="app-layout">
-  <aside class="sidebar">
+  <aside class="sidebar" [class.expanded]="sidebarExpanded">
+    <button type="button" class="sidebar-toggle" (click)="toggleSidebar()" [title]="sidebarExpanded ? 'ย่อเมนู' : 'ขยายเมนู'">
+      <svg *ngIf="!sidebarExpanded" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+      <svg *ngIf="sidebarExpanded" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>
+    </button>
     <div class="sidebar-brand">
-      <div class="brand-name">ABM</div>
-      <div class="brand-sub">Accounting &amp; Billing</div>
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <div class="brand-name">ABM</div>
+        <div class="brand-sub">Accounting &amp; Billing</div>
+      </div>
     </div>
     <nav class="sidebar-nav">
-      <a routerLink="/documents" routerLinkActive="active">เอกสาร</a>
-      <a routerLink="/customers" routerLinkActive="active">ลูกค้า</a>
-      <a routerLink="/items" routerLinkActive="active">สินค้า/บริการ</a>
+      <a routerLink="/documents" routerLinkActive="active" title="เอกสาร">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+        <span>เอกสาร</span>
+      </a>
+      <a routerLink="/customers" routerLinkActive="active" title="ลูกค้า">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>ลูกค้า</span>
+      </a>
+      <a routerLink="/items" routerLinkActive="active" title="สินค้า/บริการ">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        <span>สินค้า/บริการ</span>
+      </a>
     </nav>
     <div class="sidebar-footer">
-      <a [href]="api.exportExcelUrl()">ส่งออก Excel</a>
-      <label class="import-btn">
-        นำเข้า Excel
+      <a routerLink="/settings" routerLinkActive="active" title="ตั้งค่า">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+        <span>ตั้งค่า</span>
+      </a>
+      <a [href]="api.exportExcelUrl()" title="ส่งออก Excel">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span>ส่งออก Excel</span>
+      </a>
+      <label class="import-btn" title="นำเข้า Excel">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg>
+        <span>นำเข้า Excel</span>
         <input type="file" accept=".xlsx" (change)="onImportFile($event)" hidden />
       </label>
     </div>

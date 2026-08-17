@@ -3,10 +3,13 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
+  Company,
   Customer,
   Item,
   DocumentSummary,
+  DocumentDetail,
   CreateDocumentPayload,
+  UpdateDocumentPayload,
 } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
@@ -14,6 +17,14 @@ export class ApiService {
   private base = environment.apiBaseUrl;
 
   constructor(private http: HttpClient) {}
+
+  // -- company --
+  getCompany(): Observable<Company> {
+    return this.http.get<Company>(`${this.base}/company`);
+  }
+  updateCompany(payload: Partial<Company>): Observable<Company> {
+    return this.http.put<Company>(`${this.base}/company`, payload);
+  }
 
   // -- customers --
   getCustomers(): Observable<Customer[]> {
@@ -45,8 +56,17 @@ export class ApiService {
   createDocument(payload: CreateDocumentPayload): Observable<DocumentSummary> {
     return this.http.post<DocumentSummary>(`${this.base}/documents`, payload);
   }
+  getDocument(id: number): Observable<DocumentDetail> {
+    return this.http.get<DocumentDetail>(`${this.base}/documents/${id}`);
+  }
+  updateDocument(id: number, payload: UpdateDocumentPayload): Observable<DocumentDetail> {
+    return this.http.put<DocumentDetail>(`${this.base}/documents/${id}`, payload);
+  }
   downloadPdfUrl(id: number): string {
     return `${this.base}/documents/${id}/pdf`;
+  }
+  previewDocumentPdf(payload: CreateDocumentPayload): Observable<Blob> {
+    return this.http.post(`${this.base}/documents/preview`, payload, { responseType: 'blob' });
   }
 
   // -- excel --

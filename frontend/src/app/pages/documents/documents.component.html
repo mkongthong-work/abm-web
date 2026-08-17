@@ -18,7 +18,7 @@
         <th class="num">ยอดรวม</th>
         <th>วันที่</th>
         <th>สถานะ</th>
-        <th></th>
+        <th colspan="2"></th>
       </tr>
     </thead>
     <tbody>
@@ -29,10 +29,11 @@
         <td class="num">{{ d.total | number:'1.2-2' }}</td>
         <td>{{ d.issue_date }}</td>
         <td><span class="badge" [ngClass]="statusBadge[d.status]">{{ statusLabel[d.status] || d.status }}</span></td>
+        <td><a [routerLink]="['/documents', d.id, 'edit']">แก้ไข</a></td>
         <td><a [href]="pdfUrl(d.id)" target="_blank">PDF</a></td>
       </tr>
       <tr *ngIf="documents.length === 0">
-        <td colspan="7" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีเอกสาร — เริ่มสร้างเอกสารแรกได้เลย</td>
+        <td colspan="8" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีเอกสาร — เริ่มสร้างเอกสารแรกได้เลย</td>
       </tr>
     </tbody>
   </table>

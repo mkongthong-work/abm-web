@@ -9,8 +9,16 @@ CREATE TABLE IF NOT EXISTS company (
     tax_id          TEXT,
     phone           TEXT,
     email           TEXT,
-    logo_path       TEXT
+    logo_path       TEXT,
+    quotation_color TEXT NOT NULL DEFAULT '#0d9488',
+    invoice_color   TEXT NOT NULL DEFAULT '#2563eb',
+    receipt_color   TEXT NOT NULL DEFAULT '#7c3aed'
 );
+
+-- migration กันไว้เผื่อฐานข้อมูลเดิมถูกสร้างก่อนมีคอลัมน์สี (ตาราง company มีอยู่แล้วจาก CREATE TABLE IF NOT EXISTS ด้านบน)
+ALTER TABLE company ADD COLUMN IF NOT EXISTS quotation_color TEXT NOT NULL DEFAULT '#0d9488';
+ALTER TABLE company ADD COLUMN IF NOT EXISTS invoice_color   TEXT NOT NULL DEFAULT '#2563eb';
+ALTER TABLE company ADD COLUMN IF NOT EXISTS receipt_color   TEXT NOT NULL DEFAULT '#7c3aed';
 
 -- ลูกค้า
 CREATE TABLE IF NOT EXISTS customers (
@@ -46,8 +54,19 @@ CREATE TABLE IF NOT EXISTS documents (
     discount        NUMERIC NOT NULL DEFAULT 0,
     note            TEXT,
     status          TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','paid','void')),
+    sign_left_label  TEXT NOT NULL DEFAULT 'ผู้เสนอราคา / ผู้ออกเอกสาร',
+    sign_right_label TEXT NOT NULL DEFAULT 'ผู้อนุมัติ / ผู้รับเอกสาร',
+    show_quantity   BOOLEAN NOT NULL DEFAULT TRUE,
+    show_unit       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- migration กันไว้เผื่อฐานข้อมูลเดิมถูกสร้างก่อนมีคอลัมน์ลงชื่อท้ายเอกสาร / คอลัมน์แสดงจำนวน-หน่วย
+-- ตั้ง default เป็น TRUE เพื่อให้เอกสารเก่าที่มีอยู่แล้วยังแสดงคอลัมน์เหมือนเดิม (พฤติกรรมเดิมก่อนมี toggle)
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS sign_left_label  TEXT NOT NULL DEFAULT 'ผู้เสนอราคา / ผู้ออกเอกสาร';
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS sign_right_label TEXT NOT NULL DEFAULT 'ผู้อนุมัติ / ผู้รับเอกสาร';
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_quantity BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_unit     BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- รายการสินค้าในเอกสารแต่ละใบ
 CREATE TABLE IF NOT EXISTS document_items (

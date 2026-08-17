@@ -13,8 +13,13 @@ import { ApiService } from './services/api.service';
 export class AppComponent {
   importing = false;
   importMsg = '';
+  sidebarExpanded = false;
 
   constructor(public api: ApiService) {}
+
+  toggleSidebar() {
+    this.sidebarExpanded = !this.sidebarExpanded;
+  }
 
   onImportFile(event: Event) {
     const input = event.target as HTMLInputElement;
