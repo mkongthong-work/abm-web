@@ -1,17 +1,46 @@
-<div class="app-layout">
-  <aside class="sidebar" [class.expanded]="sidebarExpanded">
+<div class="app-layout" *ngIf="auth.token(); else pinGate">
+  <div class="mobile-topbar">
+    <button type="button" class="mobile-menu-btn" (click)="toggleMobileNav()" aria-label="เมนู">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="mobile-topbar-brand">
+      <svg width="22" height="22" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <g stroke="#0d9488" stroke-width="6" stroke-linecap="round">
+          <path d="M22 8h-8a4 4 0 0 0-4 4v14a4 4 0 0 1-4 4 4 4 0 0 1 4 4v14a4 4 0 0 0 4 4h8"></path>
+          <path d="M42 8h8a4 4 0 0 1 4 4v14a4 4 0 0 0 4 4 4 4 0 0 0-4 4v14a4 4 0 0 1-4 4h-8"></path>
+          <path d="M24 32h16"></path>
+        </g>
+      </svg>
+      <span>ABM</span>
+    </div>
+  </div>
+  <div class="sidebar-backdrop" *ngIf="mobileNavOpen" (click)="closeMobileNav()"></div>
+
+  <aside class="sidebar" [class.expanded]="sidebarExpanded" [class.mobile-open]="mobileNavOpen">
     <button type="button" class="sidebar-toggle" (click)="toggleSidebar()" [title]="sidebarExpanded ? 'ย่อเมนู' : 'ขยายเมนู'">
       <svg *ngIf="!sidebarExpanded" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
       <svg *ngIf="sidebarExpanded" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>
     </button>
     <div class="sidebar-brand">
-      <div class="brand-mark">A</div>
+      <div class="brand-mark">
+        <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <g stroke="#ffffff" stroke-width="4" stroke-linecap="round">
+            <path d="M22 8h-8a4 4 0 0 0-4 4v14a4 4 0 0 1-4 4 4 4 0 0 1 4 4v14a4 4 0 0 0 4 4h8"></path>
+            <path d="M42 8h8a4 4 0 0 1 4 4v14a4 4 0 0 0 4 4 4 4 0 0 0-4 4v14a4 4 0 0 1-4 4h-8"></path>
+            <path d="M22 40h20"></path>
+          </g>
+          <g stroke="#7fc9c1" stroke-width="4" stroke-linecap="round">
+            <path d="M24 26h16"></path>
+            <path d="M24 18h16"></path>
+          </g>
+        </svg>
+      </div>
       <div class="brand-text">
         <div class="brand-name">ABM</div>
         <div class="brand-sub">Accounting &amp; Billing</div>
       </div>
     </div>
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav" (click)="closeMobileNav()">
       <a routerLink="/documents" routerLinkActive="active" title="เอกสาร">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
         <span>เอกสาร</span>
@@ -25,7 +54,7 @@
         <span>สินค้า/บริการ</span>
       </a>
     </nav>
-    <div class="sidebar-footer">
+    <div class="sidebar-footer" (click)="closeMobileNav()">
       <a routerLink="/settings" routerLinkActive="active" title="ตั้งค่า">
         <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
         <span>ตั้งค่า</span>
@@ -39,6 +68,10 @@
         <span>นำเข้า Excel</span>
         <input type="file" accept=".xlsx" (change)="onImportFile($event)" hidden />
       </label>
+      <button type="button" class="sidebar-logout" (click)="auth.logout()" title="ออกจากระบบ">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        <span>ออกจากระบบ</span>
+      </button>
     </div>
   </aside>
   <div class="main-area">
@@ -46,5 +79,55 @@
     <main class="content">
       <router-outlet></router-outlet>
     </main>
+  </div>
+</div>
+
+<!-- ยังไม่ได้กรอก PIN (หรือ PIN เดิมใช้ไม่ได้แล้ว) — แสดงหน้ากรอก PIN แทนแอปทั้งหมด -->
+<ng-template #pinGate>
+  <div class="pin-gate">
+    <form class="pin-gate-card" (ngSubmit)="submitPin()">
+      <div class="pin-gate-mark">
+        <svg width="28" height="28" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <g stroke="#ffffff" stroke-width="4" stroke-linecap="round">
+            <path d="M22 8h-8a4 4 0 0 0-4 4v14a4 4 0 0 1-4 4 4 4 0 0 1 4 4v14a4 4 0 0 0 4 4h8"></path>
+            <path d="M42 8h8a4 4 0 0 1 4 4v14a4 4 0 0 0 4 4 4 4 0 0 0-4 4v14a4 4 0 0 1-4 4h-8"></path>
+            <path d="M22 40h20"></path>
+          </g>
+          <g stroke="#7fc9c1" stroke-width="4" stroke-linecap="round">
+            <path d="M24 26h16"></path>
+            <path d="M24 18h16"></path>
+          </g>
+        </svg>
+      </div>
+      <div class="pin-gate-title">ABM</div>
+      <p class="pin-gate-hint">กรอกรหัส PIN เพื่อเข้าใช้งาน</p>
+      <input
+        type="password"
+        inputmode="numeric"
+        autocomplete="off"
+        [(ngModel)]="pinInput"
+        name="pin"
+        placeholder="••••••"
+        autofocus
+      />
+      <p class="error" *ngIf="pinError">{{ pinError }}</p>
+      <button type="submit" [disabled]="pinLoading || !pinInput">{{ pinLoading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ' }}</button>
+    </form>
+  </div>
+</ng-template>
+
+<!-- overlay "กำลังโหลด" กลางหน้า เปิด/ปิดอัตโนมัติทุกครั้งที่มีการเรียก API (ผ่าน loadingInterceptor) -->
+<div class="loading-overlay" *ngIf="loading.visible()">
+  <svg class="loading-icon" width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <g stroke="#0d9488" stroke-width="4.5" stroke-linecap="round">
+      <path d="M22 8h-8a4 4 0 0 0-4 4v14a4 4 0 0 1-4 4 4 4 0 0 1 4 4v14a4 4 0 0 0 4 4h8"></path>
+      <path d="M42 8h8a4 4 0 0 1 4 4v14a4 4 0 0 0 4 4 4 4 0 0 0-4 4v14a4 4 0 0 1-4 4h-8"></path>
+    </g>
+    <path class="loading-line l1" d="M24 18h16" stroke="#57b3aa" stroke-width="4.5" stroke-linecap="round"></path>
+    <path class="loading-line l2" d="M24 26h16" stroke="#57b3aa" stroke-width="4.5" stroke-linecap="round"></path>
+    <path class="loading-line l3" d="M22 40h20" stroke="#0d9488" stroke-width="4.5" stroke-linecap="round"></path>
+  </svg>
+  <div class="loading-text">
+    กำลังโหลดข้อมูล<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
   </div>
 </div>

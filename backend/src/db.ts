@@ -1,4 +1,4 @@
-import { Pool, QueryResultRow, types } from "pg";
+import { Pool, PoolClient, QueryResultRow, types } from "pg";
 
 // NUMERIC ของ Postgres ปกติจะถูกส่งกลับเป็น string (กัน precision loss)
 // แต่แอปนี้ใช้เป็นตัวเลขเงิน/จำนวนตรง ๆ จึงแปลงเป็น float ให้เลยตั้งแต่ตอนอ่าน
@@ -42,6 +42,22 @@ export async function many<T extends QueryResultRow = any>(
 
 export async function run(sql: string, params: any[] = []) {
   return pool.query(sql, params);
+}
+
+// ---- transaction helper (ใช้ตอนกู้คืนข้อมูลสำรอง ที่ต้องลบ+เขียนหลายตารางแบบ all-or-nothing) ----
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 // ---- เตรียมฐานข้อมูล (เรียกครั้งเดียวตอนเริ่ม server) ----

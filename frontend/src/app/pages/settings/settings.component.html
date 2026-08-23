@@ -75,11 +75,58 @@
           </div>
         </label>
       </div>
+    </div>
+
+    <div class="card">
+      <h3>ความปลอดภัย</h3>
+      <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">รหัส PIN สำหรับกันคนนอกเข้าแอปนี้ (ทุกคนในบริษัทใช้ร่วมกัน) — ใช้แทนการตั้งค่าที่ Render ก็ได้</p>
+
+      <p class="pin-status" [class.pin-status-off]="!form.has_access_pin">
+        <ng-container *ngIf="form.has_access_pin">ตั้งรหัส PIN ไว้แล้ว</ng-container>
+        <ng-container *ngIf="!form.has_access_pin">ยังไม่ได้ตั้งรหัส PIN — ใครก็เข้าแอปนี้ได้ทันทีถ้ารู้ลิงก์</ng-container>
+      </p>
+
+      <label class="pin-field" *ngIf="form.has_access_pin">
+        รหัส PIN เดิม
+        <input type="password" inputmode="numeric" autocomplete="off" [(ngModel)]="currentPinInput" name="current_pin" placeholder="กรอกรหัส PIN ปัจจุบัน" />
+      </label>
+      <label class="pin-field">
+        {{ form.has_access_pin ? 'รหัส PIN ใหม่' : 'ตั้งรหัส PIN' }}
+        <input type="password" inputmode="numeric" autocomplete="off" [(ngModel)]="newPinInput" name="new_pin" placeholder="เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน" />
+      </label>
+      <label class="pin-field">
+        ยืนยันรหัส PIN ใหม่
+        <input type="password" inputmode="numeric" autocomplete="off" [(ngModel)]="confirmPinInput" name="confirm_pin" placeholder="พิมพ์รหัส PIN ใหม่อีกครั้ง" />
+      </label>
+      <p style="font-size:11.5px;color:var(--color-text-muted);margin:6px 0 0">บันทึกแล้วจะต้องกรอก PIN ใหม่นี้เพื่อเข้าใช้งานอีกครั้งในทุกเครื่อง</p>
+      <p class="error" *ngIf="pinError">{{ pinError }}</p>
 
       <p class="error" *ngIf="error">{{ error }}</p>
       <p class="save-success" *ngIf="saved">บันทึกข้อมูลบริษัทเรียบร้อยแล้ว</p>
 
       <button type="submit" [disabled]="saving">{{ saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}</button>
+    </div>
+
+    <div class="card">
+      <h3>ข้อมูลสำรอง</h3>
+      <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">
+        ดาวน์โหลดข้อมูลทั้งหมด (ลูกค้า สินค้า เอกสาร) เก็บไว้สำรอง เผื่อกรณีเข้า Supabase ไม่ได้ (เช่น เกินโควตาฟรี)
+        แล้วนำไฟล์นี้มากู้คืนได้ทีหลัง เพื่อให้ข้อมูลไม่หาย
+      </p>
+
+      <a class="btn-secondary" [href]="api.exportBackupUrl()">ดาวน์โหลดข้อมูลสำรอง</a>
+
+      <label class="btn-secondary" style="margin-top:10px;margin-left:10px">
+        กู้คืนข้อมูลจากไฟล์สำรอง
+        <input type="file" accept=".json" (change)="onRestoreFileSelected($event)" hidden />
+      </label>
+      <p style="font-size:11.5px;color:var(--color-text-muted);margin:6px 0 0">
+        การกู้คืนจะแทนที่ข้อมูลปัจจุบันทั้งหมดด้วยข้อมูลในไฟล์ — ไม่กระทบรหัส PIN ที่ตั้งไว้
+      </p>
+
+      <p *ngIf="restoring" style="font-size:12px;color:var(--color-text-muted);margin:8px 0 0">กำลังกู้คืนข้อมูล...</p>
+      <p class="error" *ngIf="restoreError">{{ restoreError }}</p>
+      <p class="save-success" *ngIf="restoreSuccess">{{ restoreSuccess }}</p>
     </div>
     </div>
 
@@ -109,3 +156,13 @@
     </div>
   </div>
 </form>
+
+<div class="modal-overlay" *ngIf="confirm" (click)="cancelConfirm()">
+  <div class="modal-card confirm-card" (click)="$event.stopPropagation()">
+    <p class="confirm-message">{{ confirm.message }}</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" (click)="cancelConfirm()">ยกเลิก</button>
+      <button type="button" [class.btn-danger-solid]="confirm.danger" (click)="confirm.onConfirm()">{{ confirm.confirmLabel }}</button>
+    </div>
+  </div>
+</div>

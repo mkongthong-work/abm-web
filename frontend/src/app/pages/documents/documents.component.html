@@ -1,15 +1,63 @@
 <div class="page-header">
   <div class="page-title">เอกสาร</div>
-  <div class="page-meta">{{ documents.length }} ฉบับ</div>
+  <div class="page-meta">{{ metaLabel }}</div>
   <div class="page-actions">
+    <a class="btn-ghost" [href]="api.exportExcelUrl()">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+      ส่งออก Excel
+    </a>
     <a routerLink="/documents/new"><button>+ สร้างเอกสาร</button></a>
   </div>
 </div>
 
 <p *ngIf="loading">กำลังโหลด...</p>
+<p class="error" *ngIf="actionError">{{ actionError }}</p>
+
+<div class="doc-filter-bar" *ngIf="!loading">
+  <div class="doc-filter-row">
+    <div class="input-icon" style="flex:1;min-width:240px">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="text" [ngModel]="q" (ngModelChange)="onSearchInput($event)" placeholder="ค้นหาเลขที่เอกสาร หรือชื่อลูกค้า" />
+    </div>
+    <select style="width:150px" [ngModel]="type" (ngModelChange)="setType($event)">
+      <option value="all">ทุกประเภท</option>
+      <option value="quotation">ใบเสนอราคา</option>
+      <option value="invoice">ใบแจ้งหนี้</option>
+      <option value="receipt">ใบเสร็จรับเงิน</option>
+    </select>
+    <select style="width:158px" [ngModel]="period" (ngModelChange)="setPeriod($event)">
+      <option value="all">ทุกช่วงเวลา</option>
+      <option value="30">30 วันที่ผ่านมา</option>
+      <option value="90">90 วันที่ผ่านมา</option>
+      <option value="year">ปีนี้</option>
+    </select>
+    <select style="width:176px" [ngModel]="sort" (ngModelChange)="setSort($event)">
+      <option value="date_desc">วันที่ใหม่ → เก่า</option>
+      <option value="date_asc">วันที่ เก่า → ใหม่</option>
+      <option value="total_desc">ยอดรวม มาก → น้อย</option>
+      <option value="total_asc">ยอดรวม น้อย → มาก</option>
+      <option value="number_asc">เลขที่เอกสาร</option>
+    </select>
+    <button type="button" class="btn-plain" *ngIf="hasFilters" (click)="clearFilters()">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      ล้างตัวกรอง
+    </button>
+  </div>
+
+  <div class="doc-status-chips">
+    <button
+      type="button"
+      class="badge status-chip"
+      *ngFor="let c of statusChips"
+      [ngClass]="'badge-' + c.key"
+      [class.active]="status === c.key"
+      (click)="setStatus(c.key)"
+    >{{ c.label }} {{ c.count }}</button>
+  </div>
+</div>
 
 <div class="table-card" *ngIf="!loading">
-  <table>
+  <table class="doc-table">
     <thead>
       <tr>
         <th>ประเภท</th>
@@ -18,23 +66,96 @@
         <th class="num">ยอดรวม</th>
         <th>วันที่</th>
         <th>สถานะ</th>
-        <th colspan="2"></th>
+        <th colspan="3"></th>
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let d of documents">
+      <tr *ngFor="let d of pagedRows">
         <td>{{ typeLabel[d.doc_type] }}</td>
         <td class="mono">{{ d.doc_number }}</td>
         <td>{{ d.customer_name }}</td>
         <td class="num">{{ d.total | number:'1.2-2' }}</td>
-        <td>{{ d.issue_date }}</td>
-        <td><span class="badge" [ngClass]="statusBadge[d.status]">{{ statusLabel[d.status] || d.status }}</span></td>
+        <td>
+          {{ formatThaiDate(d.issue_date) }}
+          <div class="doc-due-note" [class.overdue]="effectiveStatus(d) === 'overdue'" *ngIf="dueNote(d)">{{ dueNote(d) }}</div>
+        </td>
+        <td class="status-cell">
+          <button type="button" class="status-dropdown-btn" (click)="toggleStatusMenu(d, $event)">
+            <span class="badge" [ngClass]="statusBadge[effectiveStatus(d)]">{{ statusLabel[effectiveStatus(d)] || d.status }}</span>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="status-menu" *ngIf="openStatusMenuId === d.id" (click)="$event.stopPropagation()">
+            <button
+              type="button"
+              class="status-menu-item"
+              *ngFor="let opt of statusMenuOptions"
+              [class.active]="opt.key === d.status"
+              (click)="selectStatus(d, opt.key, $event)"
+            >
+              <span class="status-dot" [ngClass]="'status-dot-' + opt.key"></span>
+              {{ opt.label }}
+            </button>
+          </div>
+        </td>
         <td><a [routerLink]="['/documents', d.id, 'edit']">แก้ไข</a></td>
         <td><a [href]="pdfUrl(d.id)" target="_blank">PDF</a></td>
+        <td class="row-menu-cell">
+          <button type="button" class="row-menu-btn" (click)="toggleRowMenu(d, $event)" aria-label="เพิ่มเติม">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+          </button>
+          <div class="row-menu" *ngIf="openRowMenuId === d.id" (click)="$event.stopPropagation()">
+            <button type="button" class="row-menu-item" [disabled]="duplicating" (click)="duplicate(d, $event)">ทำสำเนาเอกสาร</button>
+            <button type="button" class="row-menu-item row-menu-item-danger" *ngIf="d.status !== 'void'" (click)="requestVoidFromMenu(d, $event)">ยกเลิกเอกสาร</button>
+          </div>
+        </td>
       </tr>
       <tr *ngIf="documents.length === 0">
-        <td colspan="8" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีเอกสาร — เริ่มสร้างเอกสารแรกได้เลย</td>
+        <td colspan="9" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีเอกสาร — เริ่มสร้างเอกสารแรกได้เลย</td>
+      </tr>
+      <tr *ngIf="documents.length > 0 && filtered.length === 0">
+        <td colspan="9" style="text-align:center;color:#6b7878;padding:44px 20px;line-height:1.8">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto 10px;color:#c3cccc"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          ไม่พบเอกสารที่ตรงกับเงื่อนไข
+          <div style="font-size:13px;margin-top:4px"><button type="button" class="btn-plain" (click)="clearFilters()">ล้างตัวกรองทั้งหมด</button></div>
+        </td>
       </tr>
     </tbody>
   </table>
+</div>
+
+<!-- popup ยืนยันยกเลิกเอกสาร -->
+<div class="modal-overlay" *ngIf="confirm" (click)="cancelConfirm()">
+  <div class="modal-card confirm-card" (click)="$event.stopPropagation()">
+    <p class="confirm-message">{{ confirm.message }}</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" (click)="cancelConfirm()">ยกเลิก</button>
+      <button type="button" [class.btn-danger-solid]="confirm.danger" (click)="confirm.onConfirm()">{{ confirm.confirmLabel }}</button>
+    </div>
+  </div>
+</div>
+
+<div class="doc-pagination" *ngIf="!loading && filtered.length > 0">
+  <div>{{ rangeLabel }}</div>
+  <div class="doc-page-group">
+    <div class="doc-page-size">
+      <span>แสดงหน้าละ</span>
+      <select [ngModel]="pageSize" (ngModelChange)="setPageSize($event)">
+        <option [value]="10">10</option>
+        <option [value]="20">20</option>
+        <option [value]="50">50</option>
+      </select>
+    </div>
+    <div class="doc-page-buttons">
+      <button type="button" class="page-btn" [disabled]="currentPage <= 1" (click)="prevPage()">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <ng-container *ngFor="let p of pageButtons">
+        <span *ngIf="p === '…'" class="page-ellipsis">…</span>
+        <button *ngIf="p !== '…'" type="button" class="page-btn" [class.active]="p === currentPage" (click)="setPage(p)">{{ p }}</button>
+      </ng-container>
+      <button type="button" class="page-btn" [disabled]="currentPage >= totalPages" (click)="nextPage()">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+  </div>
 </div>

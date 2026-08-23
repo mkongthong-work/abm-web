@@ -48,6 +48,91 @@ def esc(v):
     return str(v).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def esc_multiline(v):
+    """เหมือน esc() แต่แปลงการขึ้นบรรทัดใหม่ (\\n) เป็น <br> เพื่อให้ชื่อรายการที่พิมพ์หลายบรรทัดขึ้นบรรทัดจริงในเอกสาร"""
+    return esc(v).replace("\n", "<br>")
+
+
+# ============ แปลงจำนวนเงินเป็นตัวหนังสือไทย (ยอดสุทธิ...บาทถ้วน) ============
+_THAI_DIGITS = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า']
+_THAI_UNITS = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน']  # ตำแหน่งภายในกลุ่ม 6 หลัก (0 = หลักหน่วย)
+
+
+def _read_six_digit_group(group_str, is_last_group, whole_gt_one):
+    group_str = group_str.lstrip('0')
+    if group_str == '':
+        return ''
+    n = len(group_str)
+    result = []
+    for idx, ch in enumerate(group_str):
+        digit = int(ch)
+        if digit == 0:
+            continue
+        pos = n - idx - 1  # 0=หน่วย, 1=สิบ, 2=ร้อย, ...
+        if pos == 0:
+            if digit == 1 and is_last_group and whole_gt_one:
+                result.append('เอ็ด')
+            else:
+                result.append(_THAI_DIGITS[digit])
+        elif pos == 1:
+            if digit == 1:
+                result.append('สิบ')
+            elif digit == 2:
+                result.append('ยี่สิบ')
+            else:
+                result.append(_THAI_DIGITS[digit] + 'สิบ')
+        else:
+            result.append(_THAI_DIGITS[digit] + _THAI_UNITS[pos])
+    return ''.join(result)
+
+
+def _number_to_thai_text(n: int) -> str:
+    if n == 0:
+        return _THAI_DIGITS[0]
+    s = str(n)
+    groups = []
+    while s:
+        groups.append(s[-6:])
+        s = s[:-6]
+    groups.reverse()
+    num_groups = len(groups)
+    whole_gt_one = n > 1
+    parts = []
+    for gi, g in enumerate(groups):
+        is_last_group = gi == num_groups - 1
+        text = _read_six_digit_group(g, is_last_group, whole_gt_one)
+        if text == '':
+            continue
+        level = num_groups - 1 - gi
+        if level > 0:
+            text += 'ล้าน' * level
+        parts.append(text)
+    return ''.join(parts)
+
+
+def thai_baht_text(amount) -> str:
+    """แปลงจำนวนเงิน (float/int) เป็นตัวหนังสือไทยแบบ '...บาทถ้วน' / '...บาทXXสตางค์'"""
+    try:
+        amount = float(amount)
+    except (TypeError, ValueError):
+        amount = 0.0
+    negative = amount < 0
+    amount = abs(round(amount + 1e-9, 2))
+    baht = int(amount)
+    satang = int(round((amount - baht) * 100))
+    if satang >= 100:
+        baht += 1
+        satang -= 100
+    text = _number_to_thai_text(baht) + 'บาท'
+    if satang == 0:
+        text += 'ถ้วน'
+    else:
+        text += _number_to_thai_text(satang) + 'สตางค์'
+    if negative:
+        text = 'ลบ' + text
+    return text
+
+
 def _hex_to_rgb(hex_color):
     h = (hex_color or "").lstrip("#")
     if len(h) != 6:
@@ -64,9 +149,21 @@ def tint(hex_color, amount):
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
-def build_css(accent):
-    row_stripe = tint(accent, 0.95)
-    soft_bg = tint(accent, 0.93)
+def build_css(accent, minimal=False):
+    # ธีม "มินิมอล": ไม่ใช้พื้นหลังสีเลยแม้แต่สีเดียว (ไม่มีแถบลายตาราง ไม่มีพื้นหัวตาราง ไม่มีกล่องหมายเหตุสีพื้น)
+    # เหลือแค่เส้นขอบ/สีตัวอักษรดำล้วน ต่างจากธีมโมเดิร์นที่ไล่สีอ่อนจาก accent มาทำพื้นหลัง
+    if minimal:
+        row_stripe = "transparent"
+        soft_bg = "transparent"
+        th_bg = "transparent"
+        th_color = accent
+        th_border_bottom = f"border-bottom: 2px solid {accent};"
+    else:
+        row_stripe = tint(accent, 0.95)
+        soft_bg = tint(accent, 0.93)
+        th_bg = accent
+        th_color = "#fff"
+        th_border_bottom = ""
     return f"""
 @font-face {{
     font-family: 'Sarabun';
@@ -116,7 +213,7 @@ body {{
 .company-block .company-name {{
     font-size: 16px;
     font-weight: bold;
-    color: {accent};
+    color: #1a1a1a;
 }}
 .company-block .meta {{
     font-size: 11px;
@@ -131,11 +228,6 @@ body {{
     font-size: 22px;
     color: {accent};
     margin: 0;
-}}
-.doc-title .doc-number {{
-    font-size: 13px;
-    color: #444;
-    margin-top: 4px;
 }}
 .info-grid {{
     display: flex;
@@ -162,12 +254,13 @@ table.items {{
     margin-top: 8px;
 }}
 table.items th {{
-    background: {accent};
-    color: #fff;
+    background: {th_bg};
+    color: {th_color};
     font-weight: normal;
     font-size: 12px;
     padding: 8px 6px;
     text-align: left;
+    {th_border_bottom}
 }}
 table.items td {{
     padding: 7px 6px;
@@ -181,7 +274,8 @@ table.items tr:nth-child(even) td {{ background: {row_stripe}; }}
     width: 100%;
     margin-top: 10px;
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
 }}
 .totals table {{
     width: 260px;
@@ -199,6 +293,14 @@ table.items tr:nth-child(even) td {{ background: {row_stripe}; }}
     font-size: 15px;
     color: {accent};
     padding-top: 8px;
+}}
+.baht-text {{
+    width: 260px;
+    text-align: right;
+    font-size: 11.5px;
+    font-style: italic;
+    color: #444;
+    margin-top: 3px;
 }}
 .note-box {{
     margin-top: 20px;
@@ -225,12 +327,6 @@ table.items tr:nth-child(even) td {{ background: {row_stripe}; }}
     margin-bottom: 6px;
     padding-top: 40px;
 }}
-.footer-note {{
-    margin-top: 30px;
-    font-size: 10px;
-    color: #999;
-    text-align: center;
-}}
 """
 
 
@@ -250,7 +346,6 @@ TEMPLATE = """
       </div>
       <div class="doc-title">
         <h1>{doc_label_th}</h1>
-        <div class="doc-number">{doc_label_en} No. {doc_number}</div>
       </div>
     </div>
 
@@ -264,6 +359,7 @@ TEMPLATE = """
       </div>
       <div class="info-box">
         <h3>รายละเอียดเอกสาร</h3>
+        <div class="line">เลขที่เอกสาร: {doc_number}</div>
         <div class="line">วันที่ออกเอกสาร: {issue_date_th}</div>
         <div class="line">{due_date_row}</div>
       </div>
@@ -287,6 +383,7 @@ TEMPLATE = """
         {vat_row}
         <tr class="grand"><td class="label">ยอดรวมสุทธิ</td><td class="value">{total} บาท</td></tr>
       </table>
+      <div class="baht-text">({baht_text})</div>
     </div>
 
     {note_block}
@@ -294,7 +391,6 @@ TEMPLATE = """
 
   <div class="page-bottom">
     {signatures_block}
-    <div class="footer-note">เอกสารนี้สร้างจากระบบ ABM (Accounting &amp; Billing Management) POC — ตัวอย่างเพื่อการทดสอบเท่านั้น</div>
   </div>
 </body>
 </html>
@@ -303,7 +399,14 @@ TEMPLATE = """
 def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, total, out_path):
     doc_type = doc["doc_type"]
     labels = DOC_LABELS[doc_type]
+    # toggle เฉพาะเอกสารประเภทใบแจ้งหนี้: แสดงหัวเอกสารเป็น "ใบแจ้งหนี้ / ใบเสร็จรับเงิน" ได้ด้วย
+    if doc_type == "invoice" and doc.get("combined_receipt"):
+        labels = {"th": "ใบแจ้งหนี้ / ใบเสร็จรับเงิน", "en": "INVOICE / RECEIPT"}
     accent = (company or {}).get(f"{doc_type}_color") or DEFAULT_DOC_COLORS.get(doc_type, "#0d9488")
+    # ธีม "มินิมอล": ไม่ใช้สีประจำเอกสารเลย และไม่มีพื้นหลังสีเลยแม้แต่สีเดียว (ขาวดำล้วน เหลือแค่เส้นขอบ/ตัวอักษร)
+    is_minimal = doc.get("theme") == "minimal"
+    if is_minimal:
+        accent = "#1a1a1a"
 
     # ซ่อนคอลัมน์ "จำนวน" / "หน่วย" ในตารางได้ตาม toggle ที่ตั้งไว้ตอนกรอกฟอร์ม (ค่าเริ่มต้น: แสดงทั้งคู่)
     show_qty = doc.get("show_quantity")
@@ -328,7 +431,7 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
             desc_html = f'<br><span style="color:#888;font-size:11px;">{esc(it["description"])}</span>'
         cells = [
             f"<td>{idx}</td>",
-            f"<td>{esc(it['name'])}{desc_html}</td>",
+            f"<td>{esc_multiline(it['name'])}{desc_html}</td>",
         ]
         if show_qty:
             cells.append(f'<td class="num">{it["quantity"]:,.2f}</td>')
@@ -377,7 +480,7 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
         )
 
     html_str = TEMPLATE.format(
-        css=build_css(accent),
+        css=build_css(accent, minimal=is_minimal),
         company_name=esc(company["name"]),
         company_address=esc(company["address"]),
         company_tax_id=esc(company["tax_id"]),
@@ -399,6 +502,7 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
         discount_row=discount_row,
         vat_row=vat_row,
         total=money(total),
+        baht_text=thai_baht_text(total),
         note_block=note_block,
         signatures_block=signatures_block,
     )

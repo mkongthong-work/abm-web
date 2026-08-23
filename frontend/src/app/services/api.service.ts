@@ -2,21 +2,35 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { AuthService } from './auth.service';
 import {
   Company,
   Customer,
   Item,
   DocumentSummary,
   DocumentDetail,
+  DocumentDefaults,
+  DocNumberCheck,
   CreateDocumentPayload,
   UpdateDocumentPayload,
+  DocType,
 } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private base = environment.apiBaseUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private auth: AuthService
+  ) {}
+
+  /** ต่อ token PIN เป็น query string ให้ URL ที่ใช้เปิดตรง ๆ ผ่าน <a href> (ดาวน์โหลด PDF/Excel)
+   *  เพราะ <a href> แนบ header เองไม่ได้เหมือน HttpClient ปกติ */
+  private withToken(url: string): string {
+    const token = this.auth.token();
+    return token ? `${url}?token=${encodeURIComponent(token)}` : url;
+  }
 
   // -- company --
   getCompany(): Observable<Company> {
@@ -32,6 +46,9 @@ export class ApiService {
   }
   addCustomer(payload: Partial<Customer>): Observable<Customer> {
     return this.http.post<Customer>(`${this.base}/customers`, payload);
+  }
+  updateCustomer(id: number, payload: Partial<Customer>): Observable<Customer> {
+    return this.http.put<Customer>(`${this.base}/customers/${id}`, payload);
   }
   deleteCustomer(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/customers/${id}`);
@@ -63,19 +80,43 @@ export class ApiService {
     return this.http.put<DocumentDetail>(`${this.base}/documents/${id}`, payload);
   }
   downloadPdfUrl(id: number): string {
-    return `${this.base}/documents/${id}/pdf`;
+    return this.withToken(`${this.base}/documents/${id}/pdf`);
   }
   previewDocumentPdf(payload: CreateDocumentPayload): Observable<Blob> {
     return this.http.post(`${this.base}/documents/preview`, payload, { responseType: 'blob' });
   }
+  /** เช็คว่าวันที่ออกเอกสารที่เลือกย้อนหลังกว่าเอกสารล่าสุดของประเภท/เดือนเดียวกันหรือไม่ (excludeId กันชนกับตัวเองตอนแก้ไข) */
+  checkDocNumberOrder(type: DocType, issueDate: string, excludeId?: number | null): Observable<DocNumberCheck> {
+    let url = `${this.base}/documents/number-check?type=${type}&issue_date=${issueDate}`;
+    if (excludeId) url += `&exclude_id=${excludeId}`;
+    return this.http.get<DocNumberCheck>(url);
+  }
+
+  // -- ค่าเริ่มต้นของ "ตัวเลือกเอกสาร" ต่อประเภทเอกสาร (จำค่าที่ใช้ล่าสุด) --
+  getDocumentDefaults(type: DocType): Observable<DocumentDefaults> {
+    return this.http.get<DocumentDefaults>(`${this.base}/document-defaults/${type}`);
+  }
+  saveDocumentDefaults(type: DocType, payload: DocumentDefaults): Observable<{ ok: boolean }> {
+    return this.http.put<{ ok: boolean }>(`${this.base}/document-defaults/${type}`, payload);
+  }
 
   // -- excel --
   exportExcelUrl(): string {
-    return `${this.base}/excel/export`;
+    return this.withToken(`${this.base}/excel/export`);
   }
   importExcel(file: File): Observable<any> {
     const form = new FormData();
     form.append('file', file);
     return this.http.post(`${this.base}/excel/import`, form);
+  }
+
+  // -- ข้อมูลสำรองทั้งระบบ (ใช้ตอน supabase เข้าไม่ได้ / ต้องการกู้คืนข้อมูล) --
+  exportBackupUrl(): string {
+    return this.withToken(`${this.base}/backup/export`);
+  }
+  restoreBackup(file: File): Observable<any> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post(`${this.base}/backup/restore`, form);
   }
 }

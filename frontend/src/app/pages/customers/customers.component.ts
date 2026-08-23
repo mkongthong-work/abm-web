@@ -17,6 +17,15 @@ export class CustomersComponent implements OnInit {
   loading = false;
   error = '';
 
+  // -- edit popup --
+  editing: Customer | null = null;
+  editForm: Partial<Customer> = {};
+  editError = '';
+  saving = false;
+
+  // -- confirm popup (ใช้ร่วมกันทั้งยืนยันบันทึกและยืนยันลบ) --
+  confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void } | null = null;
+
   constructor(private api: ApiService) {}
 
   ngOnInit() {
@@ -48,8 +57,72 @@ export class CustomersComponent implements OnInit {
     });
   }
 
-  remove(id: number) {
-    if (!confirm('ลบลูกค้ารายนี้?')) return;
-    this.api.deleteCustomer(id).subscribe(() => this.load());
+  // -- แก้ไข --
+  openEdit(c: Customer) {
+    this.editing = c;
+    this.editForm = { name: c.name, address: c.address, tax_id: c.tax_id, phone: c.phone, email: c.email };
+    this.editError = '';
+  }
+
+  closeEdit() {
+    if (this.saving) return;
+    this.editing = null;
+    this.editForm = {};
+    this.editError = '';
+  }
+
+  requestSaveEdit() {
+    if (!this.editForm.name || !this.editing) return;
+    this.confirm = {
+      message: `ยืนยันบันทึกการแก้ไขข้อมูลลูกค้า "${this.editForm.name}"?`,
+      confirmLabel: 'บันทึกการแก้ไข',
+      danger: false,
+      onConfirm: () => this.saveEdit(),
+    };
+  }
+
+  private saveEdit() {
+    if (!this.editing) return;
+    this.saving = true;
+    this.api.updateCustomer(this.editing.id, this.editForm).subscribe({
+      next: () => {
+        this.saving = false;
+        this.confirm = null;
+        this.closeEdit();
+        this.load();
+      },
+      error: () => {
+        this.saving = false;
+        this.confirm = null;
+        this.editError = 'บันทึกการแก้ไขไม่สำเร็จ';
+      },
+    });
+  }
+
+  // -- ลบ --
+  requestDelete(c: Customer) {
+    this.confirm = {
+      message: `ยืนยันลบลูกค้า "${c.name}"? การลบไม่สามารถย้อนกลับได้`,
+      confirmLabel: 'ลบลูกค้า',
+      danger: true,
+      onConfirm: () => this.deleteConfirmed(c.id),
+    };
+  }
+
+  private deleteConfirmed(id: number) {
+    this.api.deleteCustomer(id).subscribe({
+      next: () => {
+        this.confirm = null;
+        this.load();
+      },
+      error: () => {
+        this.confirm = null;
+        this.error = 'ลบลูกค้าไม่สำเร็จ';
+      },
+    });
+  }
+
+  cancelConfirm() {
+    this.confirm = null;
   }
 }

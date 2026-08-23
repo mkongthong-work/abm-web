@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <title>ABM favicon</title>
+  <g stroke="#0d9488" stroke-width="6" stroke-linecap="round">
+    <path d="M22 8h-8a4 4 0 0 0-4 4v14a4 4 0 0 1-4 4 4 4 0 0 1 4 4v14a4 4 0 0 0 4 4h8"></path>
+    <path d="M42 8h8a4 4 0 0 1 4 4v14a4 4 0 0 0 4 4 4 4 0 0 0-4 4v14a4 4 0 0 1-4 4h-8"></path>
+    <path d="M24 32h16"></path>
+  </g>
+</svg>

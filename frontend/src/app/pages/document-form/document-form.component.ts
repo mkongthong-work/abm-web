@@ -3,7 +3,17 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
-import { Company, Customer, CreateDocumentPayload, DocType, DocumentLine, Item } from '../../models/models';
+import {
+  Company,
+  Customer,
+  CreateDocumentPayload,
+  DocType,
+  DocTheme,
+  DocumentLine,
+  Item,
+  DocNumberCheck,
+} from '../../models/models';
+import { thaiBahtText } from '../../utils/thai-baht-text';
 
 const TYPE_OPTIONS: { value: DocType; label: string }[] = [
   { value: 'quotation', label: 'ใบเสนอราคา' },
@@ -72,18 +82,20 @@ export class DocumentFormComponent implements OnInit {
   dueDate = this.defaultDueDate();
   status = 'draft';
 
-  signLeftLabel = 'ผู้เสนอราคา / ผู้ออกเอกสาร';
-  signRightLabel = 'ผู้อนุมัติ / ผู้รับเอกสาร';
+  signLeftLabel = 'ผู้ออกเอกสาร';
+  signRightLabel = 'ผู้รับเอกสาร';
 
   // ตัว toggle เปิด/ปิดฟิลด์ที่ไม่จำเป็นต้องใช้ทุกครั้ง
-  vatEnabled = true;
-  discountEnabled = true;
+  vatEnabled = false;
+  discountEnabled = false;
   noteEnabled = false;
   dueDateEnabled = false;
   signLeftEnabled = true;
   signRightEnabled = true;
   showUnit = false;
   showQuantity = false;
+  combinedReceipt = false;
+  theme: DocTheme = 'modern';
 
   // ระดับการซูมของแผงตัวอย่างเอกสาร
   zoom = 100;
@@ -91,6 +103,12 @@ export class DocumentFormComponent implements OnInit {
   error = '';
   saving = false;
   previewing = false;
+
+  // -- เช็คลำดับเลขที่เอกสารตามวันที่ออกเอกสาร (เฉพาะตอนสร้างเอกสารใหม่) --
+  numberCheck: DocNumberCheck | null = null;
+  useManualNumber = false;
+  manualDocNumber = '';
+  private numberCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
   get isEdit(): boolean {
     return this.editId !== null;
@@ -120,7 +138,77 @@ export class DocumentFormComponent implements OnInit {
     if (idParam) {
       this.editId = Number(idParam);
       this.loadDocument(this.editId);
+    } else {
+      // เอกสารใหม่: ดึงค่าเริ่มต้น (ที่จำไว้จากการใช้งานล่าสุด) ของประเภทเอกสารเริ่มต้นมาตั้งให้ทันที
+      this.applyTypeDefaults(this.type);
+      this.scheduleNumberCheck();
     }
+  }
+
+  /** เช็ค (แบบ debounce) ว่าวันที่ออกเอกสารที่เลือกอยู่ ย้อนหลังกว่าเอกสารล่าสุดของประเภท/เดือนเดียวกันหรือไม่ */
+  private scheduleNumberCheck() {
+    if (this.numberCheckTimer) clearTimeout(this.numberCheckTimer);
+    this.numberCheckTimer = setTimeout(() => this.runNumberCheck(), 300);
+  }
+
+  private runNumberCheck() {
+    // เช็คเฉพาะตอนสร้างเอกสารใหม่ (เลขที่เอกสารเดิมของเอกสารที่กำลังแก้ไขจะไม่เปลี่ยน ยกเว้นเปลี่ยนประเภท/ย้ายเดือน
+    // ซึ่งเป็นกรณีที่พบน้อยและยังไม่รองรับการแก้เลขที่เองในเส้นทางแก้ไข)
+    if (this.isEdit || !this.issueDate) {
+      this.numberCheck = null;
+      return;
+    }
+    this.api.checkDocNumberOrder(this.type, this.issueDate).subscribe({
+      next: (r) => {
+        this.numberCheck = r.conflict ? r : null;
+        if (!r.conflict) {
+          this.useManualNumber = false;
+          this.manualDocNumber = '';
+        }
+      },
+      error: () => {
+        this.numberCheck = null;
+      },
+    });
+  }
+
+  onIssueDateChange(value: string) {
+    this.issueDate = value;
+    this.scheduleNumberCheck();
+  }
+
+  /** เปิดให้แก้ไขเลขที่เอกสารเอง — เติมเลขที่แทรกที่แนะนำไว้ให้ก่อน (เช่น "QT-2026-08-0001-1") ผู้ใช้แก้ต่อได้ */
+  enableManualNumber() {
+    if (!this.numberCheck) return;
+    this.useManualNumber = true;
+    this.manualDocNumber = this.numberCheck.suggested_number || this.numberCheck.next_number;
+  }
+
+  disableManualNumber() {
+    this.useManualNumber = false;
+    this.manualDocNumber = '';
+  }
+
+  /** ดึงค่าเริ่มต้นของ "ตัวเลือกเอกสาร" ตามประเภทที่เลือก มาตั้งให้ — ใช้เฉพาะตอนสร้างเอกสารใหม่เท่านั้น (ไม่ยุ่งกับเอกสารที่กำลังแก้ไข) */
+  private applyTypeDefaults(type: DocType) {
+    if (this.isEdit) return;
+    this.api.getDocumentDefaults(type).subscribe({
+      next: (d) => {
+        this.vatEnabled = !!d.vat_enabled;
+        this.vatRate = d.vat_rate || 7;
+        this.discountEnabled = !!d.discount_enabled;
+        this.noteEnabled = !!d.note_enabled;
+        this.combinedReceipt = !!d.combined_receipt;
+      },
+      error: () => {}, // ยังไม่เคยมีค่าเริ่มต้น หรือดึงไม่สำเร็จ — ใช้ค่าตั้งต้นของฟอร์มต่อไปเฉย ๆ
+    });
+  }
+
+  /** เปลี่ยนประเภทเอกสารจากแท็บด้านบน — ถ้าเป็นเอกสารใหม่ ให้ดึงค่าเริ่มต้นของประเภทใหม่มาตั้งให้ด้วย */
+  selectType(type: DocType) {
+    this.type = type;
+    this.applyTypeDefaults(type);
+    this.scheduleNumberCheck();
   }
 
   loadDocument(id: number) {
@@ -161,6 +249,8 @@ export class DocumentFormComponent implements OnInit {
           doc.show_unit !== undefined && doc.show_unit !== null
             ? doc.show_unit
             : this.lines.some((l) => l.unit && l.unit !== 'ชิ้น');
+        this.combinedReceipt = !!doc.combined_receipt;
+        this.theme = doc.theme === 'minimal' ? 'minimal' : 'modern';
         this.loadingDoc = false;
       },
       error: () => {
@@ -219,7 +309,25 @@ export class DocumentFormComponent implements OnInit {
     };
   }
 
-  /** ผูกกับช่อง input+datalist "ชื่อรายการ": ถ้าพิมพ์ตรงกับชื่อในแคตตาล็อกให้ดึงหน่วย/ราคามาเติมให้อัตโนมัติ */
+  /**
+   * บังคับให้ Enter ในช่องชื่อรายการ (textarea) ขึ้นบรรทัดใหม่เสมอ โดยแทรก \n เองที่ตำแหน่งเคอร์เซอร์
+   * แทนที่จะพึ่งพฤติกรรม default ของเบราว์เซอร์ล้วน ๆ (กันปัญหากรณีมีอย่างอื่นไปดักจับ Enter ไว้ก่อน)
+   */
+  onNameKeydown(event: KeyboardEvent, idx: number) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const textarea = event.target as HTMLTextAreaElement;
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? textarea.value.length;
+    const value = textarea.value;
+    const newValue = value.slice(0, start) + '\n' + value.slice(end);
+    this.onNameInput(idx, newValue);
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + 1;
+    });
+  }
+
+  /** ผูกกับช่องชื่อรายการ: ถ้าพิมพ์ตรงกับชื่อในแคตตาล็อกให้ดึงหน่วย/ราคามาเติมให้อัตโนมัติ */
   onNameInput(idx: number, name: string) {
     this.lines[idx].name = name;
     const item = this.catalogItems.find((i) => i.name === name);
@@ -227,14 +335,6 @@ export class DocumentFormComponent implements OnInit {
       this.lines[idx].unit = item.unit;
       this.lines[idx].unit_price = item.unit_price;
       this.lines[idx].description = item.description;
-    }
-  }
-
-  /** กด Enter ที่ช่องสุดท้ายของแถวสุดท้าย เพื่อเพิ่มแถวใหม่เร็ว ๆ */
-  onLineKeydown(event: KeyboardEvent, idx: number) {
-    if (event.key === 'Enter' && idx === this.lines.length - 1) {
-      event.preventDefault();
-      this.addLine();
     }
   }
 
@@ -251,8 +351,8 @@ export class DocumentFormComponent implements OnInit {
     return this.type === 'quotation' ? 'QT' : this.type === 'invoice' ? 'INV' : 'RC';
   }
 
-  /** สีประจำเอกสาร ตามประเภทที่เลือก มาจากหน้าตั้งค่าบริษัท (มีสีเริ่มต้นเผื่อยังไม่ได้ตั้งค่า) */
-  get accentColor(): string {
+  /** สีประจำเอกสารตามประเภทที่เลือก มาจากหน้าตั้งค่าบริษัท (มีสีเริ่มต้นเผื่อยังไม่ได้ตั้งค่า) — ไม่ขึ้นกับธีม ใช้โชว์สวอตช์ตัวเลือกดีไซน์ */
+  get typeColor(): string {
     const fallback: Record<DocType, string> = {
       quotation: '#0d9488',
       invoice: '#2563eb',
@@ -266,6 +366,11 @@ export class DocumentFormComponent implements OnInit {
     return fromCompany[this.type] || fallback[this.type];
   }
 
+  /** สีที่ใช้จริงในพรีวิว/PDF: ธีม "มินิมอล" บังคับเป็นสีดำ ไม่ใช้สีประจำเอกสารเลย (เหมือนที่ render.py ทำกับ PDF จริง) */
+  get accentColor(): string {
+    return this.theme === 'minimal' ? '#1a1a1a' : this.typeColor;
+  }
+
   /** เดือนของ "วันที่ออกเอกสาร" เปลี่ยนไปจากเดิมหรือไม่ (เลขที่เอกสารรันตามเดือนนี้) */
   private sameIssueMonth(): boolean {
     return this.issueDate.slice(0, 7) === this.originalIssueDate.slice(0, 7);
@@ -276,6 +381,7 @@ export class DocumentFormComponent implements OnInit {
   }
 
   get docNumberDisplay(): string {
+    if (this.useManualNumber && this.manualDocNumber.trim()) return this.manualDocNumber.trim();
     if (this.isEdit && !this.willRenumber) return this.editDocNumber;
     // เอกสารใหม่ หรือกำลังจะออกเลขที่ใหม่ (เปลี่ยนประเภท/ย้ายเดือน) — โชว์เลขที่ตัวอย่างตาม "วันที่ออกเอกสาร" ที่เลือกอยู่
     const d = new Date(this.issueDate || new Date().toISOString().slice(0, 10));
@@ -317,11 +423,28 @@ export class DocumentFormComponent implements OnInit {
   get subtotal() {
     return this.lines.reduce((s, l) => s + this.effectiveQty(l) * (l.unit_price || 0), 0);
   }
+  /** ส่วนลดที่ใช้คิดจริง — ถ้าปิด toggle ไว้ ไม่นับแม้ตัวเลขในช่องจะเหลือค้างอยู่ก็ตาม (กันกรณีค่าไม่ถูก sync กับ toggle) */
+  get effectiveDiscount(): number {
+    return this.discountEnabled ? this.discount || 0 : 0;
+  }
+  /** ยึด vatEnabled เป็นหลักเสมอ ไม่พึ่งพาว่า vatRate ต้องถูกตั้งเป็น 0 ตอนปิด toggle (กันบั๊กราคารวมยังคิด VAT ทั้งที่ปิดไว้) */
   get vat() {
-    return ((this.subtotal - this.discount) * this.vatRate) / 100;
+    if (!this.vatEnabled) return 0;
+    return ((this.subtotal - this.effectiveDiscount) * this.vatRate) / 100;
   }
   get total() {
-    return this.subtotal - this.discount + this.vat;
+    return this.subtotal - this.effectiveDiscount + this.vat;
+  }
+
+  /** ยอดสุทธิเป็นตัวหนังสือไทย เช่น "หนึ่งหมื่นห้าพันบาทถ้วน" — ใช้ทั้งการ์ดสรุปยอดและพรีวิว */
+  get totalInWords(): string {
+    return thaiBahtText(this.total);
+  }
+
+  /** หัวเอกสารที่จะแสดงในพรีวิว — ใบแจ้งหนี้เปิด toggle "รวมใบเสร็จรับเงิน" จะโชว์เป็น "ใบแจ้งหนี้ / ใบเสร็จรับเงิน" */
+  get previewDocLabel(): string {
+    if (this.type === 'invoice' && this.combinedReceipt) return 'ใบแจ้งหนี้ / ใบเสร็จรับเงิน';
+    return this.typeLabel[this.type];
   }
 
   /** ตรวจสอบข้อมูลในฟอร์มและประกอบเป็น payload เดียวใช้ทั้งตอน preview / บันทึกจริง */
@@ -363,6 +486,10 @@ export class DocumentFormComponent implements OnInit {
       sign_right_label: this.signRightEnabled ? this.signRightLabel : '',
       show_quantity: this.showQuantity,
       show_unit: this.showUnit,
+      combined_receipt: this.type === 'invoice' ? this.combinedReceipt : false,
+      theme: this.theme,
+      // แทรกเลขที่เอกสารเอง (เช่น "QT-2026-08-0001-1") เฉพาะตอนสร้างใหม่และเปิดโหมดแก้เลขเองไว้ — ไม่ระบุ = ให้ระบบออกเลขอัตโนมัติ
+      doc_number: !this.isEdit && this.useManualNumber && this.manualDocNumber.trim() ? this.manualDocNumber.trim() : undefined,
     };
   }
 
@@ -405,6 +532,8 @@ export class DocumentFormComponent implements OnInit {
           sign_right_label: payload.sign_right_label,
           show_quantity: payload.show_quantity,
           show_unit: payload.show_unit,
+          combined_receipt: payload.combined_receipt,
+          theme: payload.theme,
         })
         .subscribe({
           next: () => {
@@ -420,6 +549,16 @@ export class DocumentFormComponent implements OnInit {
       this.api.createDocument(payload).subscribe({
         next: () => {
           this.saving = false;
+          // จำค่า toggle ที่ใช้ล่าสุดของประเภทเอกสารนี้ไว้เป็นค่าเริ่มต้นให้เอกสารถัดไป (ไม่ต้องรอผลลัพธ์)
+          this.api
+            .saveDocumentDefaults(payload.type, {
+              vat_enabled: this.vatEnabled,
+              vat_rate: this.vatRate,
+              discount_enabled: this.discountEnabled,
+              note_enabled: this.noteEnabled,
+              combined_receipt: this.combinedReceipt,
+            })
+            .subscribe({ error: () => {} });
           this.router.navigate(['/documents']);
         },
         error: () => {

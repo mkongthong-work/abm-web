@@ -11,7 +11,7 @@
     *ngFor="let opt of typeOptions"
     class="tab"
     [class.active]="type === opt.value"
-    (click)="type = opt.value"
+    (click)="selectType(opt.value)"
   >{{ opt.label }}</div>
 </div>
 <p class="type-change-hint" *ngIf="willRenumber">
@@ -20,12 +20,28 @@
   ระบบจะออกเลขที่เอกสารใหม่ ({{ docNumberDisplay }}) เมื่อบันทึก
 </p>
 
+<div class="doc-number-warning" *ngIf="numberCheck">
+  <p>
+    วันที่ออกเอกสารนี้ย้อนหลังกว่าเอกสารล่าสุดของเดือนนี้ (เลขที่ {{ numberCheck.latest_number }}
+    วันที่ {{ numberCheck.latest_issue_date }}) — ตามหลักบัญชี เลขที่เอกสารควรเรียงตามลำดับวันที่ออกเอกสารเสมอ
+    บันทึกได้ตามปกติ แต่แนะนำให้แก้ไขเลขที่เอกสารเองเพื่อแทรกให้ถูกลำดับ
+  </p>
+  <button type="button" class="btn-ghost" *ngIf="!useManualNumber" (click)="enableManualNumber()">แก้ไขเลขที่เอกสารเอง</button>
+  <div class="doc-number-manual" *ngIf="useManualNumber">
+    <label>
+      เลขที่เอกสาร (แก้ไขเอง)
+      <input type="text" [(ngModel)]="manualDocNumber" name="manualDocNumber" />
+    </label>
+    <button type="button" class="btn-ghost" (click)="disableManualNumber()">ใช้เลขอัตโนมัติแทน</button>
+  </div>
+</div>
+
 <form (ngSubmit)="submit()" *ngIf="!loadingDoc">
   <div class="doc-form-layout">
     <div class="doc-form-main">
       <div class="card">
         <h3>ข้อมูลเอกสาร</h3>
-        <label>
+        <label [class.label-error]="!customerId">
           ลูกค้า
           <select [(ngModel)]="customerId" name="customerId" [class.input-error]="!customerId">
             <option [ngValue]="null">-- เลือกลูกค้า --</option>
@@ -39,7 +55,7 @@
             วันที่ออกเอกสาร
             <div class="input-icon">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              <input type="date" [(ngModel)]="issueDate" name="issueDate" />
+              <input type="date" [ngModel]="issueDate" (ngModelChange)="onIssueDateChange($event)" name="issueDate" />
             </div>
           </label>
           <label>
@@ -62,6 +78,20 @@
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             <input type="date" [(ngModel)]="dueDate" name="dueDate" />
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>ดีไซน์เอกสาร</h3>
+        <div class="theme-picker">
+          <button type="button" class="theme-option" [class.active]="theme === 'modern'" (click)="theme = 'modern'">
+            <span class="theme-swatch" [style.background]="typeColor"></span>
+            <span>โมเดิร์น<br><small>มีสีตามประเภทเอกสาร</small></span>
+          </button>
+          <button type="button" class="theme-option" [class.active]="theme === 'minimal'" (click)="theme = 'minimal'">
+            <span class="theme-swatch theme-swatch-mono"></span>
+            <span>มินิมอล<br><small>ขาวดำ ไม่มีสี</small></span>
+          </button>
         </div>
       </div>
 
@@ -95,6 +125,15 @@
               <span class="slider"></span>
             </label>
             <span>แสดงหมายเหตุบนเอกสาร</span>
+          </label>
+        </div>
+        <div class="option-row" *ngIf="type === 'invoice'">
+          <label class="toggle-label">
+            <label class="toggle-switch">
+              <input type="checkbox" [(ngModel)]="combinedReceipt" name="combinedReceipt" />
+              <span class="slider"></span>
+            </label>
+            <span>แสดงหัวเอกสารเป็น "ใบแจ้งหนี้ / ใบเสร็จรับเงิน"</span>
           </label>
         </div>
       </div>
@@ -133,17 +172,23 @@
           <tbody>
             <tr *ngFor="let line of lines; let idx = index">
               <td>
-                <input
+                <select
+                  *ngIf="catalogItems.length"
+                  class="catalog-picker"
+                  #picker
+                  (change)="fillFromCatalog(idx, picker.value); picker.value=''"
+                >
+                  <option value="" disabled selected>-- เลือกจากรายการสินค้า/บริการ --</option>
+                  <option *ngFor="let ci of catalogItems" [value]="ci.id">{{ ci.name }}</option>
+                </select>
+                <textarea
                   [ngModel]="line.name"
                   (ngModelChange)="onNameInput(idx, $event)"
+                  (keydown)="onNameKeydown($event, idx)"
                   [name]="'name'+idx"
-                  [attr.list]="'catalog-list-'+idx"
-                  placeholder="พิมพ์หรือเลือกรายการ"
-                  (keydown)="onLineKeydown($event, idx)"
-                />
-                <datalist [id]="'catalog-list-'+idx">
-                  <option *ngFor="let it of catalogItems" [value]="it.name"></option>
-                </datalist>
+                  rows="2"
+                  placeholder="พิมพ์ชื่อรายการ (ขึ้นบรรทัดใหม่ได้)"
+                ></textarea>
               </td>
               <td *ngIf="showQuantity"><input type="number" min="0.01" step="any" [(ngModel)]="line.quantity" [name]="'qty'+idx" /></td>
               <td *ngIf="showUnit"><input [(ngModel)]="line.unit" [name]="'unit'+idx" /></td>
@@ -157,7 +202,16 @@
         </table>
         <div style="padding:12px 20px">
           <button type="button" class="btn-secondary" (click)="addLine()">+ เพิ่มรายการ</button>
-          <span style="font-size:12px;color:#a5aeae;margin-left:12px">กด Tab เพื่อข้ามช่อง · Enter เพื่อเพิ่มแถวใหม่</span>
+          <span style="font-size:12px;color:#a5aeae;margin-left:12px">เลือกจากรายการสินค้า/บริการที่บันทึกไว้ได้จากช่องด้านบนชื่อรายการ · ในช่องชื่อรายการ กด Enter เพื่อขึ้นบรรทัดใหม่ได้</span>
+        </div>
+        <div class="line-items-totals">
+          <div class="totals">
+            <div class="totals-row"><span>รวมเป็นเงิน</span><span>{{ subtotal | number:'1.2-2' }}</span></div>
+            <div class="totals-row" *ngIf="discountEnabled"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
+            <div class="totals-row" *ngIf="vatEnabled"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>
+            <div class="totals-grand"><span>ยอดรวมสุทธิ</span><span>{{ total | number:'1.2-2' }}</span></div>
+          </div>
+          <p style="font-size:11px;color:#a5aeae;margin:10px 0 0;text-align:right">({{ totalInWords }})</p>
         </div>
       </div>
 
@@ -190,7 +244,7 @@
             [(ngModel)]="signLeftLabel"
             name="signLeftLabel"
             [class.field-disabled]="!signLeftEnabled"
-            placeholder="เช่น ผู้เสนอราคา / ผู้ออกเอกสาร"
+            placeholder="เช่น ผู้ออกเอกสาร"
           />
         </div>
         <div class="option-row">
@@ -207,7 +261,7 @@
             [(ngModel)]="signRightLabel"
             name="signRightLabel"
             [class.field-disabled]="!signRightEnabled"
-            placeholder="เช่น ผู้อนุมัติ / ผู้รับเอกสาร"
+            placeholder="เช่น ผู้รับเอกสาร"
           />
         </div>
       </div>
@@ -227,7 +281,7 @@
 
       <div class="doc-preview-wrap">
         <div class="doc-preview-scale" [style.transform]="'scale(' + (zoom/100) + ')'">
-          <div class="doc-preview-page" [style.--accent]="accentColor">
+          <div class="doc-preview-page" [style.--accent]="accentColor" [class.doc-preview-minimal]="theme === 'minimal'">
             <div class="doc-preview-top">
               <div>
                 <div class="doc-preview-company">{{ company?.name || 'ชื่อบริษัทของคุณ' }}</div>
@@ -240,8 +294,7 @@
                 </div>
               </div>
               <div class="doc-preview-doctitle">
-                <div class="type">{{ typeLabel[type] }}</div>
-                <div class="num">{{ docNumberDisplay }}</div>
+                <div class="type">{{ previewDocLabel }}</div>
               </div>
             </div>
 
@@ -249,6 +302,10 @@
               <div>
                 <div class="label">ลูกค้า</div>
                 <div class="value" [class.doc-preview-empty]="!selectedCustomer">{{ selectedCustomer?.name || 'ยังไม่ได้เลือกลูกค้า' }}</div>
+              </div>
+              <div>
+                <div class="label">เลขที่เอกสาร</div>
+                <div class="value">{{ docNumberDisplay }}</div>
               </div>
               <div>
                 <div class="label">วันที่ออกเอกสาร</div>
@@ -267,7 +324,7 @@
               </thead>
               <tbody>
                 <tr *ngFor="let line of previewLines">
-                  <td>{{ line.name }}</td>
+                  <td style="white-space:pre-line">{{ line.name }}</td>
                   <td class="num" *ngIf="showQuantity">{{ line.quantity | number:'1.0-2' }}</td>
                   <td *ngIf="showUnit">{{ line.unit }}</td>
                   <td class="num">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
@@ -283,6 +340,7 @@
               <div class="row" *ngIf="discountEnabled"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
               <div class="row" *ngIf="vatEnabled"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>
               <div class="grand"><span>ยอดรวมสุทธิ</span><span>{{ total | number:'1.2-2' }}</span></div>
+              <div class="doc-preview-baht-text">({{ totalInWords }})</div>
             </div>
 
             <div class="doc-preview-note" *ngIf="noteEnabled && note">
@@ -308,20 +366,7 @@
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
         ดาวน์โหลด PDF
       </a>
-      <button type="button" class="btn-plain" style="width:100%" (click)="cancel()">ยกเลิก</button>
-    </div>
-
-    <div class="doc-form-side">
-      <div class="card">
-        <h3>สรุปยอด</h3>
-        <div class="totals">
-          <div class="totals-row"><span>รวมเป็นเงิน</span><span>{{ subtotal | number:'1.2-2' }}</span></div>
-          <div class="totals-row" *ngIf="discountEnabled"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
-          <div class="totals-row" *ngIf="vatEnabled"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>
-          <div class="totals-grand"><span>ยอดรวมสุทธิ</span><span>{{ total | number:'1.2-2' }}</span></div>
-        </div>
-        <p style="font-size:11px;color:#a5aeae;margin:10px 0 0">ศูนย์บาทถ้วน</p>
-      </div>
+      <button type="button" class="btn-ghost" style="width:100%" (click)="cancel()">ยกเลิก</button>
     </div>
   </div>
 </form>

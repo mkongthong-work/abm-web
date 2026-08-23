@@ -9,6 +9,12 @@ export interface Company {
   quotation_color?: string;
   invoice_color?: string;
   receipt_color?: string;
+  /** ส่งได้เฉพาะตอนบันทึก (ตั้ง/เปลี่ยน PIN ใหม่) — เซิร์ฟเวอร์จะไม่ส่งค่าจริงกลับมาให้ ดูสถานะจาก has_access_pin แทน */
+  access_pin?: string;
+  /** ต้องส่งคู่กับ access_pin เสมอตอนเปลี่ยน PIN (ยกเว้นตั้งครั้งแรกที่ยังไม่เคยมี PIN) — เซิร์ฟเวอร์ใช้ตรวจว่าเป็นเจ้าของ PIN เดิมจริง */
+  current_pin?: string;
+  /** อ่านอย่างเดียว: ตั้ง PIN ไว้แล้วหรือยัง (ไม่บอกค่าจริง) */
+  has_access_pin?: boolean;
 }
 
 export interface Customer {
@@ -29,6 +35,7 @@ export interface Item {
 }
 
 export type DocType = 'quotation' | 'invoice' | 'receipt';
+export type DocTheme = 'modern' | 'minimal';
 
 export interface DocumentSummary {
   id: number;
@@ -63,6 +70,19 @@ export interface CreateDocumentPayload {
   sign_right_label?: string;
   show_quantity?: boolean;
   show_unit?: boolean;
+  combined_receipt?: boolean;
+  theme?: DocTheme;
+  /** ระบุเองได้เฉพาะตอนสร้างเอกสารใหม่ — ใช้กรณีแทรกเลขที่เอกสารย้อนหลัง (เช่น "QT-2026-08-0001-1") ไม่ระบุ = ให้ระบบออกเลขอัตโนมัติ */
+  doc_number?: string;
+}
+
+/** ผลเช็คว่าวันที่ออกเอกสารที่เลือก ย้อนหลังกว่าเอกสารล่าสุดของประเภท/เดือนเดียวกันหรือไม่ */
+export interface DocNumberCheck {
+  next_number: string;
+  conflict: boolean;
+  latest_number: string | null;
+  latest_issue_date: string | null;
+  suggested_number: string | null;
 }
 
 export interface UpdateDocumentPayload {
@@ -79,6 +99,17 @@ export interface UpdateDocumentPayload {
   sign_right_label?: string;
   show_quantity?: boolean;
   show_unit?: boolean;
+  combined_receipt?: boolean;
+  theme?: DocTheme;
+}
+
+/** ค่าเริ่มต้นของ "ตัวเลือกเอกสาร" ที่จำไว้ต่อประเภทเอกสาร (ใช้ตอนสร้างเอกสารใหม่เท่านั้น) */
+export interface DocumentDefaults {
+  vat_enabled: boolean;
+  vat_rate: number;
+  discount_enabled: boolean;
+  note_enabled: boolean;
+  combined_receipt: boolean;
 }
 
 export interface DocumentDetail {
@@ -96,6 +127,8 @@ export interface DocumentDetail {
   sign_right_label?: string;
   show_quantity?: boolean;
   show_unit?: boolean;
+  combined_receipt?: boolean;
+  theme?: DocTheme;
   items: DocumentLine[];
   subtotal: number;
   vat: number;

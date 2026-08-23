@@ -14,28 +14,31 @@ const DOC_LABELS: Record<string, { th: string; prefix: string }> = {
 };
 
 const VALID_STATUSES = ["draft", "sent", "paid", "void"];
+const VALID_THEMES = ["modern", "minimal"];
 
 // ข้อความลงชื่อท้ายเอกสารเริ่มต้น (ผู้ใช้แก้ไขได้ต่อเอกสาร หรือปิดฝั่งใดฝั่งหนึ่งได้)
-const DEFAULT_SIGN_LEFT = "ผู้เสนอราคา / ผู้ออกเอกสาร";
-const DEFAULT_SIGN_RIGHT = "ผู้อนุมัติ / ผู้รับเอกสาร";
+const DEFAULT_SIGN_LEFT = "ผู้ออกเอกสาร";
+const DEFAULT_SIGN_RIGHT = "ผู้รับเอกสาร";
 
 // รูปแบบเลขที่เอกสาร: PREFIX-YYYY-MM-XXXX เช่น QT-2026-08-0001
 // อิงตามเดือนของ "วันที่ออกเอกสาร" (ไม่ใช่วันที่ปัจจุบันของเครื่อง) — รันเลขใหม่ทุกเดือนตามวันที่นั้น ๆ
+// หาค่าสูงสุดจาก "ทุกแถว" ที่ตรงเดือนนั้น (ไม่ใช่แค่แถวที่เพิ่งสร้างล่าสุด) เพราะอาจมีการสร้างเอกสารย้อนหลังไม่เรียงลำดับ id
+// และตัดเลขต่อท้ายแบบ "-1" (เลขที่แทรก เช่น 0001-1) ออกก่อนเทียบ ไม่ให้ปนกับเลขหลักตอนหาค่าสูงสุด
 async function nextDocNumber(docType: string, refDate: Date = new Date()): Promise<string> {
   const prefix = DOC_LABELS[docType].prefix;
   const year = refDate.getFullYear().toString();
   const month = String(refDate.getMonth() + 1).padStart(2, "0");
   const like = `${prefix}-${year}-${month}-%`;
-  const r = await one<{ doc_number: string }>(
-    "SELECT doc_number FROM documents WHERE doc_number LIKE $1 ORDER BY id DESC LIMIT 1",
-    [like]
-  );
-  let seq = 1;
-  if (r) {
-    const last = parseInt(r.doc_number.split("-").pop() as string, 10);
-    seq = last + 1;
+  const rows = await many<{ doc_number: string }>("SELECT doc_number FROM documents WHERE doc_number LIKE $1", [
+    like,
+  ]);
+  const re = new RegExp(`^${prefix}-${year}-${month}-(\\d{4})`);
+  let seq = 0;
+  for (const row of rows) {
+    const m = row.doc_number.match(re);
+    if (m) seq = Math.max(seq, parseInt(m[1], 10));
   }
-  return `${prefix}-${year}-${month}-${String(seq).padStart(4, "0")}`;
+  return `${prefix}-${year}-${month}-${String(seq + 1).padStart(4, "0")}`;
 }
 
 function calcTotals(items: any[], discount: number, vatRate: number) {
@@ -62,6 +65,8 @@ router.post("/preview", async (req, res) => {
     sign_right_label,
     show_quantity,
     show_unit,
+    combined_receipt,
+    theme,
   } = req.body;
 
   if (!type || !DOC_LABELS[type]) return res.status(400).json({ error: "ประเภทเอกสารไม่ถูกต้อง" });
@@ -93,6 +98,8 @@ router.post("/preview", async (req, res) => {
     sign_right_label: sign_right_label !== undefined ? sign_right_label : DEFAULT_SIGN_RIGHT,
     show_quantity: show_quantity !== undefined ? !!show_quantity : true,
     show_unit: show_unit !== undefined ? !!show_unit : true,
+    combined_receipt: !!combined_receipt,
+    theme: VALID_THEMES.includes(theme) ? theme : "modern",
   };
   const totals = calcTotals(lines, Number(discount), Number(vat_rate));
 
@@ -138,6 +145,54 @@ router.get("/", async (req, res) => {
   res.json(withTotals);
 });
 
+// เช็คว่าวันที่ออกเอกสารที่เลือก "ย้อนหลัง" กว่าวันที่ของเอกสารล่าสุดในเดือนเดียวกันหรือไม่
+// (เลขที่เอกสารควรเรียงตามลำดับวันที่ออกเอกสารเสมอ ตามหลักบัญชี/ภาษี — ถ้าขัดกันจะเตือนแต่ไม่บล็อก
+// และแนะนำเลขที่แทรก เช่น "0001-1" ไว้ให้แก้ไขเองได้) — exclude_id กันเอกสารเช็คชนกับตัวเองตอนแก้ไข
+router.get("/number-check", async (req, res) => {
+  const type = req.query.type as string;
+  const issueDate = req.query.issue_date as string;
+  const excludeId = req.query.exclude_id ? Number(req.query.exclude_id) : null;
+
+  if (!type || !DOC_LABELS[type]) return res.status(400).json({ error: "ประเภทเอกสารไม่ถูกต้อง" });
+  if (!issueDate) return res.status(400).json({ error: "ต้องระบุวันที่ออกเอกสาร" });
+
+  const refDate = new Date(issueDate);
+  const prefix = DOC_LABELS[type].prefix;
+  const year = refDate.getFullYear().toString();
+  const month = String(refDate.getMonth() + 1).padStart(2, "0");
+  const like = `${prefix}-${year}-${month}-%`;
+
+  const nextNumber = await nextDocNumber(type, refDate);
+
+  const latest = await one<{ doc_number: string; issue_date: string }>(
+    `SELECT doc_number, issue_date FROM documents
+     WHERE doc_type = $1 AND doc_number LIKE $2 AND ($3::int IS NULL OR id != $3)
+     ORDER BY issue_date DESC, id DESC LIMIT 1`,
+    [type, like, excludeId]
+  );
+
+  const conflict = !!latest && latest.issue_date > issueDate;
+
+  let suggestedNumber: string | null = null;
+  if (conflict) {
+    const prior = await one<{ doc_number: string }>(
+      `SELECT doc_number FROM documents
+       WHERE doc_type = $1 AND doc_number LIKE $2 AND issue_date <= $3 AND ($4::int IS NULL OR id != $4)
+       ORDER BY issue_date DESC, id DESC LIMIT 1`,
+      [type, like, issueDate, excludeId]
+    );
+    suggestedNumber = prior ? `${prior.doc_number}-1` : `${prefix}-${year}-${month}-0000-1`;
+  }
+
+  res.json({
+    next_number: nextNumber,
+    conflict,
+    latest_number: latest?.doc_number ?? null,
+    latest_issue_date: latest?.issue_date ?? null,
+    suggested_number: suggestedNumber,
+  });
+});
+
 router.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   const doc = await one<any>("SELECT * FROM documents WHERE id = $1", [id]);
@@ -167,6 +222,8 @@ router.post("/", async (req, res) => {
     sign_right_label,
     show_quantity,
     show_unit,
+    combined_receipt,
+    theme,
   } = req.body;
 
   if (!type || !DOC_LABELS[type]) return res.status(400).json({ error: "ประเภทเอกสารไม่ถูกต้อง" });
@@ -183,6 +240,8 @@ router.post("/", async (req, res) => {
   const finalSignRight = sign_right_label !== undefined ? sign_right_label : DEFAULT_SIGN_RIGHT;
   const finalShowQuantity = show_quantity !== undefined ? !!show_quantity : true;
   const finalShowUnit = show_unit !== undefined ? !!show_unit : true;
+  const finalCombinedReceipt = !!combined_receipt;
+  const finalTheme = VALID_THEMES.includes(theme) ? theme : "modern";
   const finalIssueDate = issue_date || new Date().toISOString().slice(0, 10);
   // เลขที่เอกสารรันตามเดือนของ "วันที่ออกเอกสาร" ที่เลือก ไม่ใช่วันที่ปัจจุบันของเครื่อง
   const finalDocNumber = doc_number || (await nextDocNumber(type, new Date(finalIssueDate)));
@@ -193,29 +252,40 @@ router.post("/", async (req, res) => {
     finalDueDate = d.toISOString().slice(0, 10);
   }
 
-  const doc = await one<any>(
-    `INSERT INTO documents (doc_type, doc_number, customer_id, issue_date, due_date,
-                             ref_doc_id, vat_rate, discount, note, status,
-                             sign_left_label, sign_right_label, show_quantity, show_unit)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-     RETURNING *`,
-    [
-      type,
-      finalDocNumber,
-      customer_id,
-      finalIssueDate,
-      finalDueDate,
-      ref_doc_id ?? null,
-      vat_rate,
-      discount,
-      note ?? null,
-      finalStatus,
-      finalSignLeft,
-      finalSignRight,
-      finalShowQuantity,
-      finalShowUnit,
-    ]
-  );
+  let doc: any;
+  try {
+    doc = await one<any>(
+      `INSERT INTO documents (doc_type, doc_number, customer_id, issue_date, due_date,
+                               ref_doc_id, vat_rate, discount, note, status,
+                               sign_left_label, sign_right_label, show_quantity, show_unit, combined_receipt, theme)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       RETURNING *`,
+      [
+        type,
+        finalDocNumber,
+        customer_id,
+        finalIssueDate,
+        finalDueDate,
+        ref_doc_id ?? null,
+        vat_rate,
+        discount,
+        note ?? null,
+        finalStatus,
+        finalSignLeft,
+        finalSignRight,
+        finalShowQuantity,
+        finalShowUnit,
+        finalCombinedReceipt,
+        finalTheme,
+      ]
+    );
+  } catch (err: any) {
+    // เลขที่เอกสารซ้ำ (มักเกิดตอนผู้ใช้พิมพ์เลขที่แทรกเอง เช่น 0001-1 แล้วบังเอิญซ้ำของเดิม)
+    if (err.code === "23505") {
+      return res.status(400).json({ error: `เลขที่เอกสาร "${finalDocNumber}" ถูกใช้ไปแล้ว กรุณาแก้ไขเลขที่เอกสาร` });
+    }
+    throw err;
+  }
   const docId = doc!.id;
 
   for (let idx = 0; idx < lines.length; idx++) {
@@ -257,7 +327,13 @@ router.put("/:id", async (req, res) => {
     sign_right_label,
     show_quantity,
     show_unit,
+    combined_receipt,
+    theme,
   } = req.body;
+
+  if (theme !== undefined && !VALID_THEMES.includes(theme)) {
+    return res.status(400).json({ error: "ธีมเอกสารไม่ถูกต้อง" });
+  }
 
   if (customer_id !== undefined) {
     const customer = await one("SELECT * FROM customers WHERE id = $1", [customer_id]);
@@ -301,8 +377,10 @@ router.put("/:id", async (req, res) => {
        sign_left_label = COALESCE($10, sign_left_label),
        sign_right_label = COALESCE($11, sign_right_label),
        show_quantity = COALESCE($12, show_quantity),
-       show_unit = COALESCE($13, show_unit)
-     WHERE id = $14`,
+       show_unit = COALESCE($13, show_unit),
+       combined_receipt = COALESCE($14, combined_receipt),
+       theme = COALESCE($15, theme)
+     WHERE id = $16`,
     [
       newDocType,
       newDocNumber,
@@ -317,6 +395,8 @@ router.put("/:id", async (req, res) => {
       sign_right_label ?? null,
       show_quantity ?? null,
       show_unit ?? null,
+      combined_receipt !== undefined ? !!combined_receipt : null,
+      theme ?? null,
       id,
     ]
   );
