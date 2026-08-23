@@ -7,8 +7,8 @@
   <h3>เพิ่มลูกค้าใหม่</h3>
   <form (ngSubmit)="submit()">
     <div class="grid">
-      <label>ชื่อลูกค้า *<input [(ngModel)]="form.name" name="name" required /></label>
-      <label>ที่อยู่<input [(ngModel)]="form.address" name="address" /></label>
+      <label>ชื่อลูกค้า *<textarea [(ngModel)]="form.name" name="name" rows="1" required></textarea></label>
+      <label>ที่อยู่<textarea [(ngModel)]="form.address" name="address" rows="1"></textarea></label>
       <label>เลขผู้เสียภาษี<input [(ngModel)]="form.tax_id" name="tax_id" /></label>
       <label>โทรศัพท์<input [(ngModel)]="form.phone" name="phone" /></label>
       <label>อีเมล<input [(ngModel)]="form.email" name="email" /></label>
@@ -27,7 +27,7 @@
     </thead>
     <tbody>
       <tr *ngFor="let c of customers">
-        <td style="font-weight:600">{{ c.name }}</td>
+        <td style="font-weight:600;white-space:pre-line">{{ c.name }}</td>
         <td class="mono">{{ c.tax_id || '-' }}</td>
         <td>{{ c.phone || '-' }}</td>
         <td>{{ c.email || '-' }}</td>
@@ -54,8 +54,8 @@
     </div>
     <form (ngSubmit)="requestSaveEdit()">
       <div class="grid">
-        <label>ชื่อลูกค้า *<input [(ngModel)]="editForm.name" name="edit_name" required /></label>
-        <label>ที่อยู่<input [(ngModel)]="editForm.address" name="edit_address" /></label>
+        <label>ชื่อลูกค้า *<textarea [(ngModel)]="editForm.name" name="edit_name" rows="1" required></textarea></label>
+        <label>ที่อยู่<textarea [(ngModel)]="editForm.address" name="edit_address" rows="1"></textarea></label>
         <label>เลขผู้เสียภาษี<input [(ngModel)]="editForm.tax_id" name="edit_tax_id" /></label>
         <label>โทรศัพท์<input [(ngModel)]="editForm.phone" name="edit_phone" /></label>
         <label>อีเมล<input [(ngModel)]="editForm.email" name="edit_email" /></label>

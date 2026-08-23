@@ -256,6 +256,12 @@ input:focus, select:focus, textarea:focus {
 }
 label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--color-text-soft); }
 label.block { margin: 14px 0; }
+/* textarea ในฟอร์มทั่วไป (เช่น ชื่อ/ที่อยู่ลูกค้า) — เริ่มสูงเท่า input ปกติ แต่พิมพ์ขึ้นบรรทัดใหม่ + ขยายเองได้ */
+.grid textarea, .card > form textarea {
+  resize: vertical;
+  min-height: 38px;
+  line-height: 1.4;
+}
 
 /* ============ Buttons ============ */
 button {
