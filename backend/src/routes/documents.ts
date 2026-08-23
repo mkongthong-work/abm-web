@@ -41,6 +41,18 @@ async function nextDocNumber(docType: string, refDate: Date = new Date()): Promi
   return `${prefix}-${year}-${month}-${String(seq + 1).padStart(4, "0")}`;
 }
 
+// ตั้งชื่อไฟล์ PDF ที่ดาวน์โหลดเป็น "ชื่อบริษัท-เลขที่เอกสาร.pdf" (ตัดอักขระที่ใช้ในชื่อไฟล์ไม่ได้ออก)
+function pdfFilename(companyName: string | null | undefined, docNumber: string): string {
+  const safeCompany = (companyName || "เอกสาร").replace(/[\/\\:*?"<>|]/g, "-").trim();
+  return `${safeCompany}-${docNumber}.pdf`;
+}
+
+// HTTP header เดิมรองรับแค่ ASCII จึงต้องเข้ารหัสชื่อไฟล์ภาษาไทยแบบ RFC 5987 (filename*)
+// พร้อมใส่ filename= (ASCII fallback) ไว้ด้วยกันเบราว์เซอร์เก่าที่ไม่รองรับ filename*
+function contentDispositionAttachment(filename: string): string {
+  return `attachment; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
 function calcTotals(items: any[], discount: number, vatRate: number) {
   const subtotal = items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0);
   const afterDiscount = subtotal - discount;
@@ -493,7 +505,7 @@ router.get("/:id/pdf", async (req, res) => {
       out_path: tmpOut,
     });
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${doc.doc_number}.pdf"`);
+    res.setHeader("Content-Disposition", contentDispositionAttachment(pdfFilename((company as any)?.name, doc.doc_number)));
     fs.createReadStream(tmpOut).pipe(res).on("close", () => fs.unlink(tmpOut, () => {}));
   } catch (err: any) {
     res.status(500).json({ error: "สร้าง PDF ไม่สำเร็จ", detail: err.message });
