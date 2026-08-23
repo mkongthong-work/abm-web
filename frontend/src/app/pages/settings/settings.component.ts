@@ -40,7 +40,15 @@ export class SettingsComponent implements OnInit {
   restoreError = '';
   restoreSuccess = '';
   pendingRestoreFile: File | null = null;
-  confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void } | null = null;
+
+  // -- โซนอันตราย: ลบเอกสารทั้งหมด --
+  deletingDocs = false;
+  deleteDocsError = '';
+  deleteDocsSuccess = '';
+  confirmTypedInput = '';
+
+  /** confirmPhrase: ถ้าตั้งไว้ ต้องพิมพ์ข้อความนี้ให้ตรงก่อนถึงจะกดยืนยันได้ (กันมือลั่นสำหรับ action ที่ย้อนกลับไม่ได้) */
+  confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void; confirmPhrase?: string } | null = null;
 
   constructor(public api: ApiService) {}
 
@@ -136,6 +144,7 @@ export class SettingsComponent implements OnInit {
   cancelConfirm() {
     this.confirm = null;
     this.pendingRestoreFile = null;
+    this.confirmTypedInput = '';
   }
 
   confirmRestore() {
@@ -157,6 +166,42 @@ export class SettingsComponent implements OnInit {
         this.restoring = false;
         this.restoreError = err?.error?.error || 'กู้คืนข้อมูลไม่สำเร็จ';
         this.pendingRestoreFile = null;
+      },
+    });
+  }
+
+  // -- โซนอันตราย: ลบเอกสารทั้งหมด --
+  requestDeleteAllDocuments() {
+    this.deleteDocsError = '';
+    this.deleteDocsSuccess = '';
+    this.confirmTypedInput = '';
+    this.confirm = {
+      message:
+        'ยืนยันลบเอกสารทั้งหมด (ใบเสนอราคา/ใบแจ้งหนี้/ใบเสร็จ) ทุกใบในระบบ? การกระทำนี้ย้อนกลับไม่ได้ ' +
+        'หลังลบแล้วเลขที่เอกสารของเดือนนี้จะเริ่มนับ 0001 ใหม่ (ข้อมูลลูกค้าและสินค้าจะไม่ถูกลบ) ' +
+        'แนะนำให้ดาวน์โหลดข้อมูลสำรองไว้ก่อนถ้ายังไม่มั่นใจ',
+      confirmLabel: 'ลบเอกสารทั้งหมด',
+      danger: true,
+      confirmPhrase: 'ลบเอกสารทั้งหมด',
+      onConfirm: () => this.confirmDeleteAllDocuments(),
+    };
+  }
+
+  confirmDeleteAllDocuments() {
+    this.confirm = null;
+    this.confirmTypedInput = '';
+    this.deletingDocs = true;
+    this.deleteDocsError = '';
+    this.deleteDocsSuccess = '';
+    this.api.deleteAllDocuments().subscribe({
+      next: () => {
+        this.deletingDocs = false;
+        this.deleteDocsSuccess = 'ลบเอกสารทั้งหมดเรียบร้อยแล้ว — เลขที่เอกสารจะเริ่มนับ 0001 ใหม่';
+        setTimeout(() => (this.deleteDocsSuccess = ''), 5000);
+      },
+      error: (err) => {
+        this.deletingDocs = false;
+        this.deleteDocsError = err?.error?.error || 'ลบเอกสารไม่สำเร็จ';
       },
     });
   }

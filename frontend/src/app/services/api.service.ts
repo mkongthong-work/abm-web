@@ -66,6 +66,10 @@ export class ApiService {
   }
 
   // -- documents --
+  /** ลบเอกสารทั้งหมด (ใช้ตอนล้างข้อมูลทดสอบ ให้เลขที่เอกสารเริ่มนับ 0001 ใหม่) */
+  deleteAllDocuments(): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`${this.base}/documents`);
+  }
   getDocuments(type?: string): Observable<DocumentSummary[]> {
     const url = type ? `${this.base}/documents?type=${type}` : `${this.base}/documents`;
     return this.http.get<DocumentSummary[]>(url);

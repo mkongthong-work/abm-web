@@ -145,6 +145,15 @@ router.get("/", async (req, res) => {
   res.json(withTotals);
 });
 
+// ลบเอกสารทั้งหมดในระบบ (ใช้ตอนอยากเคลียร์ข้อมูลทดสอบ แล้วให้เลขที่เอกสารเริ่มนับ 0001 ใหม่)
+// document_items ลบตามอัตโนมัติด้วย ON DELETE CASCADE — รีเซ็ต sequence ทั้งสองตารางกลับไปเริ่มที่ 1
+router.delete("/", async (req, res) => {
+  await run("DELETE FROM documents");
+  await run("SELECT setval('documents_id_seq', 1, false)");
+  await run("SELECT setval('document_items_id_seq', 1, false)");
+  res.json({ ok: true });
+});
+
 // เช็คว่าวันที่ออกเอกสารที่เลือก "ย้อนหลัง" กว่าวันที่ของเอกสารล่าสุดในเดือนเดียวกันหรือไม่
 // (เลขที่เอกสารควรเรียงตามลำดับวันที่ออกเอกสารเสมอ ตามหลักบัญชี/ภาษี — ถ้าขัดกันจะเตือนแต่ไม่บล็อก
 // และแนะนำเลขที่แทรก เช่น "0001-1" ไว้ให้แก้ไขเองได้) — exclude_id กันเอกสารเช็คชนกับตัวเองตอนแก้ไข
