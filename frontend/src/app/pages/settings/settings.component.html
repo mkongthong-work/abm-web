@@ -132,12 +132,27 @@
     <div class="card">
       <h3>โซนอันตราย</h3>
       <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">
-        ลบเอกสาร (ใบเสนอราคา/ใบแจ้งหนี้/ใบเสร็จ) ทั้งหมดในระบบ เพื่อเริ่มนับเลขที่เอกสารใหม่จาก 0001 —
-        ไม่กระทบข้อมูลลูกค้าและสินค้า แนะนำให้ดาวน์โหลดข้อมูลสำรองไว้ก่อนถ้ายังไม่มั่นใจ
+        ลบเอกสาร (ใบเสนอราคา/ใบแจ้งหนี้/ใบเสร็จ) ออกจากระบบ — ไม่กระทบข้อมูลลูกค้าและสินค้า
+        แนะนำให้ดาวน์โหลดข้อมูลสำรองไว้ก่อนถ้ายังไม่มั่นใจ
       </p>
+
+      <label style="margin-bottom:12px">
+        ลบตามช่วงวันที่ออกเอกสาร
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" [(ngModel)]="deleteFromDate" name="delete_from" style="width:auto" />
+          <span style="font-size:12px;color:var(--color-text-muted)">ถึง</span>
+          <input type="date" [(ngModel)]="deleteToDate" name="delete_to" style="width:auto" />
+          <button type="button" class="btn-secondary" [disabled]="deletingDocs" (click)="requestDeleteByRange()">ลบเอกสารในช่วงนี้</button>
+        </div>
+      </label>
+
       <button type="button" class="btn-danger-solid" [disabled]="deletingDocs" (click)="requestDeleteAllDocuments()">
         {{ deletingDocs ? 'กำลังลบ...' : 'ลบเอกสารทั้งหมด' }}
       </button>
+      <p style="font-size:11.5px;color:var(--color-text-muted);margin:6px 0 0">
+        ลบทั้งหมดจะรีเซ็ตเลขที่เอกสารให้เริ่มนับ 0001 ใหม่ด้วย — ถ้าเลือกลบตามช่วงวันที่หรือเลือกทีละรายการ (ในหน้าเอกสาร) จะไม่รีเซ็ตเลข
+      </p>
+
       <p class="error" *ngIf="deleteDocsError">{{ deleteDocsError }}</p>
       <p class="save-success" *ngIf="deleteDocsSuccess">{{ deleteDocsSuccess }}</p>
     </div>

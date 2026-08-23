@@ -73,8 +73,12 @@ export class DocumentsComponent implements OnInit {
   duplicating = false;
   actionError = '';
 
-  // -- popup ยืนยัน (ใช้กับการยกเลิกเอกสาร) --
+  // -- popup ยืนยัน (ใช้กับการยกเลิกเอกสาร + ลบเอกสารที่เลือก) --
   confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void } | null = null;
+
+  // -- เลือกทีละรายการ (checkbox) เพื่อลบเป็นชุด --
+  selectedIds = new Set<number>();
+  bulkDeleting = false;
 
   // -- ตัวกรอง/ค้นหา/เรียง/แบ่งหน้า (ทำฝั่ง client ทั้งหมดจากลิสต์ที่โหลดมาครั้งเดียว) --
   q = '';
@@ -404,6 +408,57 @@ export class DocumentsComponent implements OnInit {
       error: () => {
         this.duplicating = false;
         this.actionError = 'ทำสำเนาเอกสารไม่สำเร็จ';
+      },
+    });
+  }
+
+  // -- เลือกทีละรายการ + ลบเป็นชุด --
+  get isAllPageSelected(): boolean {
+    return this.pagedRows.length > 0 && this.pagedRows.every((d) => this.selectedIds.has(d.id));
+  }
+
+  toggleSelect(id: number, event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) this.selectedIds.add(id);
+    else this.selectedIds.delete(id);
+  }
+
+  toggleSelectAll(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    for (const d of this.pagedRows) {
+      if (checked) this.selectedIds.add(d.id);
+      else this.selectedIds.delete(d.id);
+    }
+  }
+
+  clearSelection() {
+    this.selectedIds.clear();
+  }
+
+  requestBulkDelete() {
+    const ids = Array.from(this.selectedIds);
+    if (ids.length === 0) return;
+    this.confirm = {
+      message: `ยืนยันลบเอกสารที่เลือกไว้ ${ids.length} รายการ? การกระทำนี้ย้อนกลับไม่ได้`,
+      confirmLabel: `ลบ ${ids.length} รายการ`,
+      danger: true,
+      onConfirm: () => this.confirmBulkDelete(ids),
+    };
+  }
+
+  private confirmBulkDelete(ids: number[]) {
+    this.bulkDeleting = true;
+    this.api.deleteDocuments({ ids }).subscribe({
+      next: () => {
+        this.bulkDeleting = false;
+        this.documents = this.documents.filter((d) => !ids.includes(d.id));
+        this.selectedIds.clear();
+        this.confirm = null;
+      },
+      error: () => {
+        this.bulkDeleting = false;
+        this.confirm = null;
+        this.actionError = 'ลบเอกสารที่เลือกไม่สำเร็จ';
       },
     });
   }

@@ -145,13 +145,41 @@ router.get("/", async (req, res) => {
   res.json(withTotals);
 });
 
-// ลบเอกสารทั้งหมดในระบบ (ใช้ตอนอยากเคลียร์ข้อมูลทดสอบ แล้วให้เลขที่เอกสารเริ่มนับ 0001 ใหม่)
-// document_items ลบตามอัตโนมัติด้วย ON DELETE CASCADE — รีเซ็ต sequence ทั้งสองตารางกลับไปเริ่มที่ 1
+// ลบเอกสาร — รองรับ 3 แบบ ตามสิ่งที่ส่งมา (document_items ลบตามอัตโนมัติด้วย ON DELETE CASCADE เสมอ):
+//   1. ระบุ body { ids: number[] }        → ลบเฉพาะรายการที่เลือกไว้
+//   2. ระบุ query ?from=YYYY-MM-DD&to=... → ลบตามช่วงวันที่ออกเอกสาร (ระบุแค่ from หรือ to อย่างเดียวก็ได้)
+//   3. ไม่ระบุอะไรเลย                     → ลบทั้งหมด + รีเซ็ต sequence กลับไปเริ่มที่ 1 (ใช้ตอนเคลียร์ข้อมูลทดสอบ)
+// หมายเหตุ: รีเซ็ต id sequence เฉพาะกรณีลบทั้งหมดเท่านั้น — ถ้าลบบางส่วนแล้วรีเซ็ตด้วยจะเสี่ยง id ชนกับแถวที่เหลืออยู่
 router.delete("/", async (req, res) => {
-  await run("DELETE FROM documents");
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((v: any) => Number.isInteger(v)) : null;
+  const from = (req.query.from as string) || undefined;
+  const to = (req.query.to as string) || undefined;
+
+  if (ids && ids.length > 0) {
+    const placeholders = ids.map((_: any, i: number) => `$${i + 1}`).join(",");
+    const r = await run(`DELETE FROM documents WHERE id IN (${placeholders})`, ids);
+    return res.json({ ok: true, deleted: r.rowCount });
+  }
+
+  if (from || to) {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    if (from) {
+      params.push(from);
+      conditions.push(`issue_date >= $${params.length}`);
+    }
+    if (to) {
+      params.push(to);
+      conditions.push(`issue_date <= $${params.length}`);
+    }
+    const r = await run(`DELETE FROM documents WHERE ${conditions.join(" AND ")}`, params);
+    return res.json({ ok: true, deleted: r.rowCount });
+  }
+
+  const r = await run("DELETE FROM documents");
   await run("SELECT setval('documents_id_seq', 1, false)");
   await run("SELECT setval('document_items_id_seq', 1, false)");
-  res.json({ ok: true });
+  res.json({ ok: true, deleted: r.rowCount });
 });
 
 // เช็คว่าวันที่ออกเอกสารที่เลือก "ย้อนหลัง" กว่าวันที่ของเอกสารล่าสุดในเดือนเดียวกันหรือไม่

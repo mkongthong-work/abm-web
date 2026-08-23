@@ -553,6 +553,21 @@ td.num, th.num { text-align: right; font-family: 'IBM Plex Mono', monospace; fon
   flex-wrap: wrap;
 }
 
+/* แถบดำเนินการเมื่อเลือกเอกสารทีละรายการ (checkbox) เพื่อลบเป็นชุด */
+.doc-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-primary-tint);
+  border: 1px solid var(--color-primary-tint-border);
+  border-radius: var(--radius-card);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.doc-bulk-bar span { margin-right: auto; font-weight: 600; }
+
 /* ============ Pagination (หน้าเอกสาร) ============ */
 .doc-pagination {
   display: flex;

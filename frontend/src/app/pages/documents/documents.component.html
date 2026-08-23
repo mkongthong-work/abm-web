@@ -56,10 +56,19 @@
   </div>
 </div>
 
+<div class="doc-bulk-bar" *ngIf="selectedIds.size > 0">
+  <span>{{ selectedIds.size }} รายการที่เลือก</span>
+  <button type="button" class="btn-ghost" (click)="clearSelection()">ยกเลิกการเลือก</button>
+  <button type="button" class="btn-danger-solid" [disabled]="bulkDeleting" (click)="requestBulkDelete()">
+    {{ bulkDeleting ? 'กำลังลบ...' : 'ลบที่เลือก' }}
+  </button>
+</div>
+
 <div class="table-card" *ngIf="!loading">
   <table class="doc-table">
     <thead>
       <tr>
+        <th style="width:34px"><input type="checkbox" [checked]="isAllPageSelected" (change)="toggleSelectAll($event)" /></th>
         <th>ประเภท</th>
         <th>เลขที่</th>
         <th>ลูกค้า</th>
@@ -71,6 +80,7 @@
     </thead>
     <tbody>
       <tr *ngFor="let d of pagedRows">
+        <td><input type="checkbox" [checked]="selectedIds.has(d.id)" (change)="toggleSelect(d.id, $event)" (click)="$event.stopPropagation()" /></td>
         <td>{{ typeLabel[d.doc_type] }}</td>
         <td class="mono">{{ d.doc_number }}</td>
         <td>{{ d.customer_name }}</td>
@@ -110,10 +120,10 @@
         </td>
       </tr>
       <tr *ngIf="documents.length === 0">
-        <td colspan="9" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีเอกสาร — เริ่มสร้างเอกสารแรกได้เลย</td>
+        <td colspan="10" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีเอกสาร — เริ่มสร้างเอกสารแรกได้เลย</td>
       </tr>
       <tr *ngIf="documents.length > 0 && filtered.length === 0">
-        <td colspan="9" style="text-align:center;color:#6b7878;padding:44px 20px;line-height:1.8">
+        <td colspan="10" style="text-align:center;color:#6b7878;padding:44px 20px;line-height:1.8">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto 10px;color:#c3cccc"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           ไม่พบเอกสารที่ตรงกับเงื่อนไข
           <div style="font-size:13px;margin-top:4px"><button type="button" class="btn-plain" (click)="clearFilters()">ล้างตัวกรองทั้งหมด</button></div>

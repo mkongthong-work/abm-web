@@ -66,9 +66,15 @@ export class ApiService {
   }
 
   // -- documents --
-  /** ลบเอกสารทั้งหมด (ใช้ตอนล้างข้อมูลทดสอบ ให้เลขที่เอกสารเริ่มนับ 0001 ใหม่) */
-  deleteAllDocuments(): Observable<{ ok: boolean }> {
-    return this.http.delete<{ ok: boolean }>(`${this.base}/documents`);
+  /** ลบเอกสาร — ไม่ระบุอะไรเลย = ลบทั้งหมด (รีเซ็ตเลขที่เอกสารกลับ 0001), ระบุ ids = ลบเฉพาะที่เลือก, ระบุ from/to = ลบตามช่วงวันที่ */
+  deleteDocuments(opts: { ids?: number[]; from?: string; to?: string } = {}): Observable<{ ok: boolean; deleted: number }> {
+    const params: string[] = [];
+    if (opts.from) params.push(`from=${opts.from}`);
+    if (opts.to) params.push(`to=${opts.to}`);
+    const url = `${this.base}/documents${params.length ? '?' + params.join('&') : ''}`;
+    return this.http.delete<{ ok: boolean; deleted: number }>(url, {
+      body: opts.ids && opts.ids.length ? { ids: opts.ids } : undefined,
+    });
   }
   getDocuments(type?: string): Observable<DocumentSummary[]> {
     const url = type ? `${this.base}/documents?type=${type}` : `${this.base}/documents`;

@@ -41,11 +41,13 @@ export class SettingsComponent implements OnInit {
   restoreSuccess = '';
   pendingRestoreFile: File | null = null;
 
-  // -- โซนอันตราย: ลบเอกสารทั้งหมด --
+  // -- โซนอันตราย: ลบเอกสาร --
   deletingDocs = false;
   deleteDocsError = '';
   deleteDocsSuccess = '';
   confirmTypedInput = '';
+  deleteFromDate = '';
+  deleteToDate = '';
 
   /** confirmPhrase: ถ้าตั้งไว้ ต้องพิมพ์ข้อความนี้ให้ตรงก่อนถึงจะกดยืนยันได้ (กันมือลั่นสำหรับ action ที่ย้อนกลับไม่ได้) */
   confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void; confirmPhrase?: string } | null = null;
@@ -193,10 +195,63 @@ export class SettingsComponent implements OnInit {
     this.deletingDocs = true;
     this.deleteDocsError = '';
     this.deleteDocsSuccess = '';
-    this.api.deleteAllDocuments().subscribe({
+    this.api.deleteDocuments().subscribe({
       next: () => {
         this.deletingDocs = false;
         this.deleteDocsSuccess = 'ลบเอกสารทั้งหมดเรียบร้อยแล้ว — เลขที่เอกสารจะเริ่มนับ 0001 ใหม่';
+        setTimeout(() => (this.deleteDocsSuccess = ''), 5000);
+      },
+      error: (err) => {
+        this.deletingDocs = false;
+        this.deleteDocsError = err?.error?.error || 'ลบเอกสารไม่สำเร็จ';
+      },
+    });
+  }
+
+  // -- โซนอันตราย: ลบเอกสารตามช่วงวันที่ (เช็คจำนวนที่จะโดนลบก่อน แล้วค่อยให้ยืนยัน) --
+  requestDeleteByRange() {
+    if (!this.deleteFromDate && !this.deleteToDate) {
+      this.deleteDocsError = 'กรุณาเลือกช่วงวันที่อย่างน้อยหนึ่งด้าน';
+      return;
+    }
+    this.deleteDocsError = '';
+    this.deleteDocsSuccess = '';
+    this.api.getDocuments().subscribe({
+      next: (docs) => {
+        const from = this.deleteFromDate;
+        const to = this.deleteToDate;
+        const matched = docs.filter((d) => (!from || d.issue_date >= from) && (!to || d.issue_date <= to));
+        if (matched.length === 0) {
+          this.deleteDocsError = 'ไม่พบเอกสารในช่วงวันที่ที่เลือก';
+          return;
+        }
+        this.confirmTypedInput = '';
+        this.confirm = {
+          message: `พบเอกสาร ${matched.length} ฉบับ ในช่วงวันที่ ${from || 'เริ่มต้น'} ถึง ${to || 'ปัจจุบัน'} ยืนยันลบทั้งหมดนี้? การกระทำนี้ย้อนกลับไม่ได้`,
+          confirmLabel: `ลบ ${matched.length} รายการ`,
+          danger: true,
+          confirmPhrase: 'ลบ',
+          onConfirm: () => this.confirmDeleteByRange(),
+        };
+      },
+      error: () => {
+        this.deleteDocsError = 'โหลดรายการเอกสารไม่สำเร็จ';
+      },
+    });
+  }
+
+  confirmDeleteByRange() {
+    this.confirm = null;
+    this.confirmTypedInput = '';
+    this.deletingDocs = true;
+    this.deleteDocsError = '';
+    this.deleteDocsSuccess = '';
+    this.api.deleteDocuments({ from: this.deleteFromDate || undefined, to: this.deleteToDate || undefined }).subscribe({
+      next: (r) => {
+        this.deletingDocs = false;
+        this.deleteDocsSuccess = `ลบเอกสารแล้ว ${r.deleted} รายการ`;
+        this.deleteFromDate = '';
+        this.deleteToDate = '';
         setTimeout(() => (this.deleteDocsSuccess = ''), 5000);
       },
       error: (err) => {
