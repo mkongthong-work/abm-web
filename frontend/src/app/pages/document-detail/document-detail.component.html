@@ -1,0 +1,98 @@
+<div class="page-header">
+  <div class="page-title">รายละเอียดเอกสาร</div>
+  <span class="badge" [ngClass]="statusBadge[doc.status]" *ngIf="doc">{{ statusLabel[doc.status] || doc.status }}</span>
+  <span class="mono" style="color:var(--color-text-muted)" *ngIf="doc">{{ doc.doc_number }}</span>
+  <div class="page-actions">
+    <button type="button" class="btn-ghost" (click)="goBack()">← กลับ</button>
+    <a *ngIf="doc" [routerLink]="['/documents', doc.id, 'edit']" class="btn-secondary">แก้ไข</a>
+    <a *ngIf="doc" [href]="api.downloadPdfUrl(doc.id)" target="_blank" class="btn-secondary">ดาวน์โหลด PDF</a>
+  </div>
+</div>
+
+<p *ngIf="loading">กำลังโหลด...</p>
+<p class="error" *ngIf="error">{{ error }}</p>
+
+<div *ngIf="doc && !loading">
+  <div class="doc-void-notice" *ngIf="doc.status === 'void'">
+    เอกสารนี้ถูก <strong>ยกเลิก</strong> ไว้
+    <span *ngIf="doc.void_reason"> — เหตุผล (ดูภายในเท่านั้น): {{ doc.void_reason }}</span>
+  </div>
+
+  <!-- ข้อมูลนี้ไม่ได้พิมพ์อยู่บนตัวเอกสาร/PDF จึงแยกโชว์ไว้นอกกรอบพรีวิวด้านล่าง -->
+  <div class="card doc-detail-meta" *ngIf="doc.due_date">
+    <div>
+      <div class="label">{{ doc.doc_type === 'invoice' ? 'ครบกำหนดชำระ' : 'ยืนราคาถึง' }}</div>
+      <div class="value">{{ formatThaiDate(doc.due_date) }}</div>
+    </div>
+  </div>
+
+  <div class="doc-a4-wrap">
+    <div class="doc-preview-page" [style.--accent]="accentColor" [class.doc-preview-minimal]="doc.theme === 'minimal'">
+      <div class="doc-preview-top">
+        <div>
+          <div class="doc-preview-company">{{ company?.name || 'ชื่อบริษัทของคุณ' }}</div>
+          <div class="doc-preview-company-meta">
+            <div *ngIf="company?.address">{{ company?.address }}</div>
+            <div *ngIf="company?.tax_id">เลขผู้เสียภาษี: {{ company?.tax_id }}</div>
+            <div *ngIf="company?.phone || company?.email">
+              {{ company?.phone }}<span *ngIf="company?.phone && company?.email"> · </span>{{ company?.email }}
+            </div>
+          </div>
+        </div>
+        <div class="doc-preview-doctitle">
+          <div class="type">{{ previewDocLabel }}</div>
+        </div>
+      </div>
+
+      <div class="doc-preview-meta">
+        <div>
+          <div class="label">ลูกค้า</div>
+          <div class="value" style="white-space:pre-line">{{ selectedCustomer?.name || '-' }}</div>
+        </div>
+        <div>
+          <div class="label">เลขที่เอกสาร</div>
+          <div class="value">{{ doc.doc_number }}</div>
+        </div>
+        <div>
+          <div class="label">วันที่ออกเอกสาร</div>
+          <div class="value">{{ doc.issue_date | date:'d MMM yyyy' }}</div>
+        </div>
+      </div>
+
+      <table class="doc-preview-table">
+        <thead>
+          <tr>
+            <th>รายการ</th>
+            <th class="num" style="width:36px" *ngIf="doc.show_quantity">จำนวน</th>
+            <th style="width:40px" *ngIf="doc.show_unit">หน่วย</th>
+            <th class="num" style="width:64px">จำนวนเงิน</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let line of doc.items">
+            <td style="white-space:pre-line">{{ line.name }}</td>
+            <td class="num" *ngIf="doc.show_quantity">{{ line.quantity | number:'1.0-2' }}</td>
+            <td *ngIf="doc.show_unit">{{ line.unit }}</td>
+            <td class="num">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
+          </tr>
+          <tr *ngIf="doc.items.length === 0">
+            <td [attr.colspan]="2 + (doc.show_quantity ? 1 : 0) + (doc.show_unit ? 1 : 0)" class="doc-preview-empty">ยังไม่มีรายการสินค้า/บริการ</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="doc-preview-totals">
+        <div class="row"><span>รวมเป็นเงิน</span><span>{{ doc.subtotal | number:'1.2-2' }}</span></div>
+        <div class="row" *ngIf="doc.discount"><span>ส่วนลด</span><span>-{{ doc.discount | number:'1.2-2' }}</span></div>
+        <div class="row" *ngIf="doc.vat_rate"><span>ภาษีมูลค่าเพิ่ม ({{ doc.vat_rate }}%)</span><span>{{ doc.vat | number:'1.2-2' }}</span></div>
+        <div class="grand"><span>ยอดรวมสุทธิ</span><span>{{ doc.total | number:'1.2-2' }}</span></div>
+        <div class="doc-preview-baht-text">({{ totalInWords }})</div>
+      </div>
+
+      <div class="doc-preview-note" *ngIf="doc.note">
+        <div class="label">หมายเหตุ</div>
+        <div>{{ doc.note }}</div>
+      </div>
+    </div>
+  </div>
+</div>

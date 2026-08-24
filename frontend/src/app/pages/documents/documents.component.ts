@@ -103,6 +103,11 @@ export class DocumentsComponent implements OnInit {
     this.load();
   }
 
+  /** กดที่แถวเอกสาร (นอกปุ่ม/ลิงก์ย่อยในแถว) ไปหน้ารายละเอียดแบบดูอย่างเดียว */
+  goToDetail(d: DocumentSummary) {
+    this.router.navigate(['/documents', d.id, 'view']);
+  }
+
   load() {
     this.loading = true;
     this.api.getDocuments().subscribe({

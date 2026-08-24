@@ -79,7 +79,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let d of pagedRows">
+      <tr *ngFor="let d of pagedRows" class="doc-row-clickable" (click)="goToDetail(d)">
         <td><input type="checkbox" [checked]="selectedIds.has(d.id)" (change)="toggleSelect(d.id, $event)" (click)="$event.stopPropagation()" /></td>
         <td>{{ typeLabel[d.doc_type] }}</td>
         <td class="mono">{{ d.doc_number }}</td>
@@ -107,8 +107,8 @@
             </button>
           </div>
         </td>
-        <td><a [routerLink]="['/documents', d.id, 'edit']">แก้ไข</a></td>
-        <td><a [href]="pdfUrl(d.id)" target="_blank">PDF</a></td>
+        <td><a [routerLink]="['/documents', d.id, 'edit']" (click)="$event.stopPropagation()">แก้ไข</a></td>
+        <td><a [href]="pdfUrl(d.id)" target="_blank" (click)="$event.stopPropagation()">PDF</a></td>
         <td class="row-menu-cell">
           <button type="button" class="row-menu-btn" (click)="toggleRowMenu(d, $event)" aria-label="เพิ่มเติม">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>

@@ -351,6 +351,7 @@ table {
 }
 /* ตารางเอกสาร: คอลัมน์เยอะ (ประเภท/เลขที่/ลูกค้า/ยอดรวม/วันที่/สถานะ/แก้ไข/PDF/⋮) กำหนด min-width กันตัวหนังสือบีบจนตัดบรรทัดรก ๆ เมื่อจอแคบ ให้เลื่อนแนวนอนใน .table-card แทน */
 .doc-table { min-width: 1200px; }
+.doc-row-clickable { cursor: pointer; }
 th, td {
   text-align: left;
   padding: 11px 18px;
@@ -1264,6 +1265,53 @@ button.btn-danger-solid:hover { background: #a5311f; }
   background: transparent;
   border-radius: 0;
   border-left: 3px solid var(--accent, var(--color-primary));
+}
+
+/* ============ หน้ารายละเอียดเอกสาร (ดูอย่างเดียว) ============ */
+.doc-void-notice {
+  font-size: 13px;
+  color: var(--color-danger);
+  background: var(--color-danger-tint);
+  border: 1px solid var(--color-danger-tint-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+.doc-detail-meta {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.doc-detail-meta .label { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .03em; }
+.doc-detail-meta .value { font-size: 14px; font-weight: 600; margin-top: 3px; }
+/* พรีวิวหน้ารายละเอียดเอกสาร: ขนาด/สัดส่วนเท่ากระดาษ A4 จริง (794×1123px ที่ 96dpi)
+   ต่างจาก .doc-preview-page ตัวย่อในฟอร์มแก้ไข (แผงข้าง 320px) ที่ตัวหนังสือเล็กกว่านี้เพราะพื้นที่จำกัด
+   ที่นี่ขยายฟอนต์ให้เหมาะกับหน้ากระดาษเต็มขนาดแทน */
+.doc-a4-wrap { width: 794px; max-width: 100%; margin: 0 auto; }
+.doc-a4-wrap .doc-preview-page {
+  width: 100%;
+  min-height: 1123px;
+  box-sizing: border-box;
+  padding: 48px 56px;
+}
+.doc-a4-wrap .doc-preview-company { font-size: 17px; }
+.doc-a4-wrap .doc-preview-company-meta { font-size: 12px; }
+.doc-a4-wrap .doc-preview-doctitle .type { font-size: 20px; }
+.doc-a4-wrap .doc-preview-meta { margin-bottom: 20px; }
+.doc-a4-wrap .doc-preview-meta .label { font-size: 10.5px; }
+.doc-a4-wrap .doc-preview-meta .value { font-size: 13px; }
+.doc-a4-wrap .doc-preview-table { font-size: 12.5px; }
+.doc-a4-wrap .doc-preview-table th { padding: 9px 12px; }
+.doc-a4-wrap .doc-preview-table td { padding: 9px 12px; }
+.doc-a4-wrap .doc-preview-totals { width: 260px; font-size: 13px; }
+.doc-a4-wrap .doc-preview-totals .grand { font-size: 15px; }
+.doc-a4-wrap .doc-preview-baht-text { font-size: 11px; }
+.doc-a4-wrap .doc-preview-note { font-size: 12px; padding: 12px 14px; margin-top: 20px; }
+
+@media (max-width: 860px) {
+  .doc-a4-wrap { width: 100%; }
+  .doc-a4-wrap .doc-preview-page { min-height: auto; padding: 24px 20px; }
 }
 
 .totals {
