@@ -9,13 +9,11 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@types/nodemailer": "^8.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^9.0.5",
     "pg": "^8.13.0"
   },
   "devDependencies": {

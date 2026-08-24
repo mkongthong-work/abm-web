@@ -1,54 +1,54 @@
-import nodemailer from "nodemailer";
+// ---- ส่งอีเมลข้อมูลสำรอง (backup) ผ่าน Brevo Transactional Email API (HTTPS) ----
+// เดิมใช้ Gmail SMTP ตรง ๆ ผ่าน nodemailer แต่ Render free tier บล็อกพอร์ต SMTP ขาออกทั้งหมด
+// (25 / 465 / 587) ทำให้ต่อ Gmail SMTP ไม่ได้เลยไม่ว่าจะแก้ยังไง — เปลี่ยนมาส่งผ่าน HTTPS (พอร์ต 443)
+// แทน ซึ่งไม่โดนบล็อกเพราะเป็นพอร์ตเดียวกับที่เว็บต้องใช้รับ request อยู่แล้ว
+//
+// ต้องตั้งค่า ENV บน Render:
+//   BREVO_API_KEY   - สร้างที่ Brevo (brevo.com, มีแผนฟรี) > Settings > SMTP & API > API Keys
+//   SMTP_USER       - อีเมลผู้ส่ง ต้องไป verify ไว้ใน Brevo ก่อน (Senders, Domains & Dedicated IPs > Senders)
+//                      (ใช้ ENV ชื่อเดิมต่อเพื่อไม่ต้องแก้ค่าที่ตั้งไว้แล้วบน Render)
+//   BACKUP_EMAIL_TO - อีเมลปลายทางที่จะรับไฟล์สำรอง ถ้าไม่ตั้งไว้ fallback ไปที่ SMTP_USER เอง
 
-// ---- ส่งอีเมลข้อมูลสำรอง (backup) ผ่าน Gmail SMTP ----
-// ต้องตั้งค่า ENV: SMTP_USER (อีเมล Gmail), SMTP_PASS (App Password 16 หลัก ไม่ใช่รหัสผ่าน Gmail ปกติ)
-// ปลายทางส่งถึง BACKUP_EMAIL_TO ถ้าตั้งไว้ ไม่งั้น fallback ไปที่ SMTP_USER เอง (ส่งหาตัวเอง)
-
-let transporter: nodemailer.Transporter | null = null;
-
-function getTransport(): nodemailer.Transporter {
-  if (transporter) return transporter;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!user || !pass) {
-    throw new Error(
-      "ยังไม่ได้ตั้งค่า SMTP_USER / SMTP_PASS — ตั้งเป็นอีเมล Gmail และ App Password (ไม่ใช่รหัสผ่านปกติ)"
-    );
-  }
-  transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
-    // บังคับต่อผ่าน IPv4 — บาง host (เช่น Render free tier) เส้นทาง IPv6 ไปหา Gmail ไม่ได้
-    // ทำให้เจอ ENETUNREACH ถ้าปล่อยให้ Node เลือก address family เอง
-    // หมายเหตุ: "family" รองรับจริงตอน runtime (ส่งต่อให้ net/tls.connect) แต่ @types/nodemailer ไม่มี field นี้
-    // ต้อง cast เป็น any ไม่งั้น TypeScript เลือก overload ผิดตัว
-    family: 4,
-  } as any) as nodemailer.Transporter;
-  return transporter;
-}
+const BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email";
 
 export async function sendBackupEmail(attachmentBuffer: Buffer, filename: string) {
-  const user = process.env.SMTP_USER;
-  const to = process.env.BACKUP_EMAIL_TO || user;
-  if (!to) {
-    throw new Error("ไม่พบปลายทางอีเมล — ตั้งค่า BACKUP_EMAIL_TO หรือ SMTP_USER");
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error("ยังไม่ได้ตั้งค่า BREVO_API_KEY — ไปสร้างที่ Brevo > Settings > SMTP & API > API Keys");
   }
-  const t = getTransport();
+  const senderEmail = process.env.SMTP_USER;
+  if (!senderEmail) {
+    throw new Error("ยังไม่ได้ตั้งค่า SMTP_USER (ใช้เป็นอีเมลผู้ส่ง ต้อง verify ไว้ใน Brevo ก่อน)");
+  }
+  const to = process.env.BACKUP_EMAIL_TO || senderEmail;
   const now = new Date();
-  await t.sendMail({
-    from: `"ABM Backup" <${user}>`,
-    to,
-    subject: `[ABM] ข้อมูลสำรองประจำวันที่ ${now.toLocaleDateString("th-TH")}`,
-    text:
-      "ไฟล์แนบคือข้อมูลสำรองทั้งหมดของระบบ ABM (รูปแบบ JSON)\n" +
-      "หากต้องกู้คืนข้อมูล ให้เข้าหน้า \"ตั้งค่า\" ในระบบ แล้วอัปโหลดไฟล์นี้ผ่านเมนู \"กู้คืนข้อมูลจากไฟล์สำรอง\"\n\n" +
-      "อีเมลนี้ส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ",
-    attachments: [
-      {
-        filename,
-        content: attachmentBuffer,
-        contentType: "application/json",
-      },
-    ],
+
+  const res = await fetch(BREVO_SEND_URL, {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: { email: senderEmail, name: "ABM Backup" },
+      to: [{ email: to }],
+      subject: `[ABM] ข้อมูลสำรองประจำวันที่ ${now.toLocaleDateString("th-TH")}`,
+      textContent:
+        "ไฟล์แนบคือข้อมูลสำรองทั้งหมดของระบบ ABM (รูปแบบ JSON)\n" +
+        'หากต้องกู้คืนข้อมูล ให้เข้าหน้า "ตั้งค่า" ในระบบ แล้วอัปโหลดไฟล์นี้ผ่านเมนู "กู้คืนข้อมูลจากไฟล์สำรอง"\n\n' +
+        "อีเมลนี้ส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ",
+      attachment: [
+        {
+          name: filename,
+          content: attachmentBuffer.toString("base64"),
+        },
+      ],
+    }),
   });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Brevo API ตอบกลับ ${res.status}: ${body.slice(0, 500)}`);
+  }
 }
