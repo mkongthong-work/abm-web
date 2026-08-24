@@ -1,7 +1,7 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
-import { initDb } from "./db";
+import { initDb, one } from "./db";
 import companyRouter from "./routes/company";
 import customersRouter from "./routes/customers";
 import itemsRouter from "./routes/items";
@@ -19,6 +19,17 @@ async function main() {
   app.use(express.json());
 
   app.get("/api/health", (req, res) => res.json({ ok: true }));
+  // ปิงเบา ๆ แตะฐานข้อมูลจริง (ไม่ผ่าน requireAuth เพราะให้ cron ภายนอกยิงถี่ ๆ ได้)
+  // ใช้กันทั้งเซิร์ฟเวอร์ Render sleep (free tier หลับหลังไม่มี request 15 นาที)
+  // และกัน Supabase project pause (free tier พักหลังไม่มีการใช้ฐานข้อมูล 7 วัน)
+  app.get("/api/ping", async (req, res) => {
+    try {
+      await one("SELECT 1 AS ok");
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
   app.use("/api/auth", authRouter); // /api/auth/login — ไม่ต้องผ่าน requireAuth (ใช้ล็อกอินเข้าระบบ)
   app.use("/api/company", requireAuth, companyRouter);
   app.use("/api/customers", requireAuth, customersRouter);
