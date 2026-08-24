@@ -169,7 +169,7 @@ router.post("/restore", requireAuth, upload.single("file"), async (req, res) => 
 // สำหรับให้บริการ cron-ping ภายนอก (เช่น cron-job.org) เรียกเป็นระยะ — ไม่ผ่าน requireAuth
 // (เพราะ cron ภายนอกแนบ token ระบบล็อกอินไม่ได้) แต่ตรวจ secret คนละตัวแทน
 // ตั้ง secret ผ่าน ENV: BACKUP_TRIGGER_SECRET แล้วเรียก GET /api/backup/run?secret=...
-router.get("/run", async (req, res) => {
+router.get("/run", (req, res) => {
   const expected = process.env.BACKUP_TRIGGER_SECRET;
   if (!expected) {
     return res.status(500).json({ error: "ยังไม่ได้ตั้งค่า BACKUP_TRIGGER_SECRET บนเซิร์ฟเวอร์" });
@@ -177,15 +177,22 @@ router.get("/run", async (req, res) => {
   if (req.query.secret !== expected) {
     return res.status(401).json({ error: "unauthorized" });
   }
-  try {
-    const payload = await buildBackupPayload();
-    const buffer = Buffer.from(JSON.stringify(payload, null, 2), "utf-8");
-    await sendBackupEmail(buffer, backupFilename());
-    await run("UPDATE company SET last_backup_at = NOW() WHERE id = 1");
-    res.json({ ok: true, sent_at: new Date().toISOString() });
-  } catch (err: any) {
-    res.status(500).json({ error: `ส่งอีเมลข้อมูลสำรองไม่สำเร็จ: ${err.message}` });
-  }
+
+  // ตอบกลับ cron ภายนอกทันที ไม่รอขั้นส่งอีเมล — SMTP ขาออกบางทีช้า/ถูกหน่วงจนเกิน timeout ของ cron
+  // (cron-job.org แผนฟรีตั้ง timeout เกิน 30 วิไม่ได้) งานจริงทำต่อ background แล้วดูผลจาก log บน Render แทน
+  res.json({ ok: true, accepted_at: new Date().toISOString() });
+
+  (async () => {
+    try {
+      const payload = await buildBackupPayload();
+      const buffer = Buffer.from(JSON.stringify(payload, null, 2), "utf-8");
+      await sendBackupEmail(buffer, backupFilename());
+      await run("UPDATE company SET last_backup_at = NOW() WHERE id = 1");
+      console.log("[backup] ส่งอีเมลข้อมูลสำรองสำเร็จ");
+    } catch (err: any) {
+      console.error("[backup] ส่งอีเมลข้อมูลสำรองไม่สำเร็จ:", err.message);
+    }
+  })();
 });
 
 export default router;
