@@ -4,9 +4,9 @@ import nodemailer from "nodemailer";
 // ต้องตั้งค่า ENV: SMTP_USER (อีเมล Gmail), SMTP_PASS (App Password 16 หลัก ไม่ใช่รหัสผ่าน Gmail ปกติ)
 // ปลายทางส่งถึง BACKUP_EMAIL_TO ถ้าตั้งไว้ ไม่งั้น fallback ไปที่ SMTP_USER เอง (ส่งหาตัวเอง)
 
-let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+let transporter: nodemailer.Transporter | null = null;
 
-function getTransport() {
+function getTransport(): nodemailer.Transporter {
   if (transporter) return transporter;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
@@ -18,7 +18,12 @@ function getTransport() {
   transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user, pass },
-  });
+    // บังคับต่อผ่าน IPv4 — บาง host (เช่น Render free tier) เส้นทาง IPv6 ไปหา Gmail ไม่ได้
+    // ทำให้เจอ ENETUNREACH ถ้าปล่อยให้ Node เลือก address family เอง
+    // หมายเหตุ: "family" รองรับจริงตอน runtime (ส่งต่อให้ net/tls.connect) แต่ @types/nodemailer ไม่มี field นี้
+    // ต้อง cast เป็น any ไม่งั้น TypeScript เลือก overload ผิดตัว
+    family: 4,
+  } as any) as nodemailer.Transporter;
   return transporter;
 }
 
