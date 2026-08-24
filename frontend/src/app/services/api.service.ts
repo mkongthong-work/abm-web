@@ -124,9 +124,10 @@ export class ApiService {
   exportBackupUrl(): string {
     return this.withToken(`${this.base}/backup/export`);
   }
-  restoreBackup(file: File): Observable<any> {
+  restoreBackup(file: File, mode: 'replace' | 'merge' = 'replace'): Observable<any> {
     const form = new FormData();
     form.append('file', file);
+    form.append('mode', mode);
     return this.http.post(`${this.base}/backup/restore`, form);
   }
 }

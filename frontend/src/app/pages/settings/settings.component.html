@@ -239,3 +239,39 @@
     </div>
   </div>
 </div>
+
+<!-- เลือกไฟล์กู้คืนข้อมูลแล้ว — ให้เลือกโหมดก่อน: ผสานกับของเดิม หรือ แทนที่ทั้งหมด -->
+<div class="modal-overlay" *ngIf="pendingRestoreFile" (click)="cancelRestore()">
+  <div class="modal-card confirm-card" (click)="$event.stopPropagation()">
+    <p class="confirm-message">เลือกไฟล์ "{{ pendingRestoreFile.name }}" แล้ว จะกู้คืนข้อมูลแบบไหน?</p>
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px">
+      <button
+        type="button"
+        class="btn-secondary"
+        style="width: 100%; text-align: left; padding: 12px 14px"
+        [disabled]="restoring"
+        (click)="confirmRestore('merge')"
+      >
+        <strong>ผสานกับข้อมูลเดิม (merge)</strong>
+        <div style="font-size: 12px; font-weight: 400; margin-top: 3px; color: var(--color-text-muted)">
+          เพิ่มลูกค้า/สินค้า/เอกสารที่ยังไม่มีในระบบ ไม่ลบหรือทับข้อมูลปัจจุบัน
+        </div>
+      </button>
+      <button
+        type="button"
+        class="btn-danger-solid"
+        style="width: 100%; text-align: left; padding: 12px 14px"
+        [disabled]="restoring"
+        (click)="confirmRestore('replace')"
+      >
+        <strong>แทนที่ทั้งหมด</strong>
+        <div style="font-size: 12px; font-weight: 400; margin-top: 3px; color: #fbe4e0">
+          ลบข้อมูลลูกค้า/สินค้า/เอกสารปัจจุบันทั้งหมด แล้วแทนที่ด้วยไฟล์นี้ — ย้อนกลับไม่ได้
+        </div>
+      </button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" [disabled]="restoring" (click)="cancelRestore()">ยกเลิก</button>
+    </div>
+  </div>
+</div>

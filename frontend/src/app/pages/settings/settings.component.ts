@@ -242,42 +242,46 @@ export class SettingsComponent implements OnInit {
 
     this.restoreError = '';
     this.restoreSuccess = '';
+    // เลือกไฟล์แล้วให้เลือกโหมดกู้คืนก่อน (ผสาน/แทนที่ทั้งหมด) — ไม่ใช้ modal ยืนยันแบบทั่วไป (this.confirm)
+    // เพราะตรงนี้มีให้เลือก 2 ทาง ไม่ใช่แค่ยืนยัน/ยกเลิกอย่างเดียว
     this.pendingRestoreFile = file;
-    this.confirm = {
-      message: `ยืนยันกู้คืนข้อมูลจากไฟล์ "${file.name}"? ข้อมูลปัจจุบันทั้งหมด (ลูกค้า สินค้า เอกสาร) จะถูกแทนที่ด้วยข้อมูลในไฟล์นี้ทันที และไม่สามารถย้อนกลับได้`,
-      confirmLabel: 'กู้คืนข้อมูล',
-      danger: true,
-      onConfirm: () => this.confirmRestore(),
-    };
   }
 
   cancelConfirm() {
     this.confirm = null;
-    this.pendingRestoreFile = null;
     this.confirmTypedInput = '';
   }
 
-  confirmRestore() {
+  cancelRestore() {
+    this.pendingRestoreFile = null;
+  }
+
+  confirmRestore(mode: 'replace' | 'merge') {
     const file = this.pendingRestoreFile;
-    this.confirm = null;
+    this.pendingRestoreFile = null;
     if (!file) return;
 
     this.restoring = true;
     this.restoreError = '';
     this.restoreSuccess = '';
-    this.api.restoreBackup(file).subscribe({
-      next: () => {
+    this.api.restoreBackup(file, mode).subscribe({
+      next: (r) => {
         this.restoring = false;
-        this.restoreSuccess = 'กู้คืนข้อมูลเรียบร้อยแล้ว';
-        this.pendingRestoreFile = null;
-        setTimeout(() => (this.restoreSuccess = ''), 5000);
+        this.restoreSuccess = mode === 'merge' ? this.mergeSummaryLabel(r) : 'กู้คืนข้อมูลเรียบร้อยแล้ว (แทนที่ข้อมูลเดิมทั้งหมด)';
+        setTimeout(() => (this.restoreSuccess = ''), 8000);
       },
       error: (err) => {
         this.restoring = false;
         this.restoreError = err?.error?.error || 'กู้คืนข้อมูลไม่สำเร็จ';
-        this.pendingRestoreFile = null;
       },
     });
+  }
+
+  private mergeSummaryLabel(r: any): string {
+    const d = r?.restored?.documents;
+    const c = r?.restored?.customers;
+    const i = r?.restored?.items;
+    return `ผสานข้อมูลเรียบร้อยแล้ว — เพิ่มลูกค้าใหม่ ${c?.added ?? 0} ราย, สินค้า ${i?.added ?? 0} รายการ, เอกสาร ${d?.added ?? 0} ฉบับ (รายการที่มีอยู่แล้วไม่ถูกแตะ)`;
   }
 
   // -- โซนอันตราย --
