@@ -75,6 +75,8 @@ ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_quantity BOOLEAN NOT NULL DE
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_unit     BOOLEAN NOT NULL DEFAULT TRUE;
 -- toggle: ซ่อนคอลัมน์ "ราคา/หน่วย" และ "จำนวนเงิน" พร้อมกันได้ (เช่น ใบส่งของที่ไม่ต้องการโชว์ราคา) ค่าเริ่มต้น: แสดง
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_price    BOOLEAN NOT NULL DEFAULT TRUE;
+-- เหตุผลตอนยกเลิกเอกสาร (บังคับกรอกตอนเปลี่ยนสถานะเป็น "ยกเลิก") — เก็บไว้ดูภายในเท่านั้น ไม่แสดงบน PDF/เอกสาร
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS void_reason   TEXT;
 -- toggle: เอกสารประเภทใบแจ้งหนี้ (invoice) แสดงหัวเอกสารเป็น "ใบแจ้งหนี้ / ใบเสร็จรับเงิน" ได้ด้วย (ค่าเริ่มต้น: ปิด)
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS combined_receipt BOOLEAN NOT NULL DEFAULT FALSE;
 -- ธีมเอกสาร: 'modern' (มีสีตามประเภทเอกสาร ค่าเริ่มต้น) หรือ 'minimal' (ขาวดำ ไม่มีสี) เลือกได้ต่อเอกสาร

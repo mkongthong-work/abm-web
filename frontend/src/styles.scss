@@ -411,16 +411,16 @@ td.num, th.num { text-align: right; font-family: 'IBM Plex Mono', monospace; fon
 .status-dropdown-btn:hover .badge { filter: brightness(0.96); }
 .status-dropdown-btn:hover svg { color: var(--color-text-soft); }
 .status-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  /* fixed (ไม่ใช่ absolute) + ตำแหน่งคำนวณจาก JS (getBoundingClientRect) — กัน .table-card ที่มี
+     overflow-y: hidden บัง dropdown ของแถวใกล้ขอบล่างตาราง (ดู toggleStatusMenu ใน .ts) */
+  position: fixed;
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-input);
   box-shadow: 0 6px 20px rgba(0, 0, 0, .1);
   padding: 4px;
   min-width: 150px;
-  z-index: 20;
+  z-index: 200;
 }
 .status-menu-item {
   display: flex;
@@ -464,16 +464,15 @@ td.num, th.num { text-align: right; font-family: 'IBM Plex Mono', monospace; fon
 }
 .row-menu-btn:hover { background: var(--color-bg); color: var(--color-text); }
 .row-menu {
-  position: absolute;
-  top: calc(100% + 2px);
-  right: 0;
+  /* fixed + ตำแหน่งคำนวณจาก JS เหมือน .status-menu ด้านบน (เหตุผลเดียวกัน) */
+  position: fixed;
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-input);
   box-shadow: 0 6px 20px rgba(0, 0, 0, .1);
   padding: 4px;
   min-width: 160px;
-  z-index: 20;
+  z-index: 200;
 }
 .row-menu-item {
   display: block;
@@ -892,6 +891,10 @@ button.theme-option small { font-weight: 400; color: var(--color-text-muted); fo
 .pin-gate-card .error { width: 100%; text-align: left; margin: 0 0 8px; }
 .pin-gate-card button { width: 100%; margin-top: 6px; }
 .doc-form-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* .doc-form-main เป็น <fieldset> ตอนล็อกฟอร์ม (เอกสารที่ยกเลิกแล้ว) — ล้าง style เริ่มต้นของ fieldset ทิ้ง
+   (browser ใส่ border/padding/margin มาเอง) แล้วให้หน้าตาเหมือน <div> เดิมทุกอย่าง แค่เพิ่มเอฟเฟกต์จางลงตอนถูกล็อก */
+fieldset.doc-form-main { border: none; padding: 0; margin: 0; min-inline-size: auto; }
+fieldset.doc-form-main:disabled { opacity: .6; }
 
 /* สรุปยอด ต่อท้ายตารางรายการสินค้า/บริการ ในการ์ดเดียวกัน */
 .line-items-totals {

@@ -71,6 +71,7 @@ export interface CreateDocumentPayload {
   show_quantity?: boolean;
   show_unit?: boolean;
   show_price?: boolean;
+  void_reason?: string;
   combined_receipt?: boolean;
   theme?: DocTheme;
   /** ระบุเองได้เฉพาะตอนสร้างเอกสารใหม่ — ใช้กรณีแทรกเลขที่เอกสารย้อนหลัง (เช่น "QT-2026-08-0001-1") ไม่ระบุ = ให้ระบบออกเลขอัตโนมัติ */
@@ -101,6 +102,8 @@ export interface UpdateDocumentPayload {
   show_quantity?: boolean;
   show_unit?: boolean;
   show_price?: boolean;
+  /** บังคับกรอกตอนเปลี่ยนสถานะเป็น "ยกเลิก" ครั้งแรก — เก็บไว้ดูภายในเท่านั้น ไม่พิมพ์ลงเอกสาร/PDF */
+  void_reason?: string;
   combined_receipt?: boolean;
   theme?: DocTheme;
 }
@@ -130,6 +133,7 @@ export interface DocumentDetail {
   show_quantity?: boolean;
   show_unit?: boolean;
   show_price?: boolean;
+  void_reason?: string;
   combined_receipt?: boolean;
   theme?: DocTheme;
   items: DocumentLine[];

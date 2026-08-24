@@ -74,7 +74,9 @@ export class DocumentsComponent implements OnInit {
   actionError = '';
 
   // -- popup ยืนยัน (ใช้กับการยกเลิกเอกสาร + ลบเอกสารที่เลือก) --
-  confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void } | null = null;
+  confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void; requireReason?: boolean } | null = null;
+  /** เหตุผลตอนยกเลิกเอกสาร (บังคับกรอก) — เก็บไว้ดูภายในเท่านั้น ไม่พิมพ์ลง PDF */
+  voidReasonInput = '';
 
   // -- เลือกทีละรายการ (checkbox) เพื่อลบเป็นชุด --
   selectedIds = new Set<number>();
@@ -290,16 +292,34 @@ export class DocumentsComponent implements OnInit {
   }
 
   // -- เมนูเปลี่ยนสถานะ / เมนู ⋮ ต่อแถว --
+  // ใช้ position: fixed + คำนวณตำแหน่งเองจาก getBoundingClientRect() แทน position: absolute ปกติ
+  // เพราะ .table-card มี overflow-y: hidden (กันตารางเลื่อนแนวตั้งซ้อนกับหน้าเว็บ) ซึ่งจะบัง dropdown
+  // ของแถวใกล้ขอบล่างตารางไม่ให้เห็น — fixed หนีออกจากการ clip ของ ancestor ได้เสมอ
+  statusMenuPos: { top: number; left: number } | null = null;
+  rowMenuPos: { top: number; right: number } | null = null;
+
   toggleStatusMenu(d: DocumentSummary, event: MouseEvent) {
     event.stopPropagation();
     this.openRowMenuId = null;
-    this.openStatusMenuId = this.openStatusMenuId === d.id ? null : d.id;
+    if (this.openStatusMenuId === d.id) {
+      this.openStatusMenuId = null;
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.statusMenuPos = { top: rect.bottom + 4, left: rect.left };
+    this.openStatusMenuId = d.id;
   }
 
   toggleRowMenu(d: DocumentSummary, event: MouseEvent) {
     event.stopPropagation();
     this.openStatusMenuId = null;
-    this.openRowMenuId = this.openRowMenuId === d.id ? null : d.id;
+    if (this.openRowMenuId === d.id) {
+      this.openRowMenuId = null;
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.rowMenuPos = { top: rect.bottom + 2, right: window.innerWidth - rect.right };
+    this.openRowMenuId = d.id;
   }
 
   /** คลิกที่อื่นในหน้า (นอกเมนู) ให้ปิดเมนูที่เปิดอยู่ทั้งหมด — ปุ่มเปิดเมนูเรียก stopPropagation ไว้แล้วจึงไม่ปิดตัวเอง */
@@ -307,6 +327,13 @@ export class DocumentsComponent implements OnInit {
   closeMenus() {
     this.openStatusMenuId = null;
     this.openRowMenuId = null;
+  }
+
+  /** เมนูใช้ position: fixed ที่ตำแหน่งคำนวณไว้ตอนเปิด — ถ้าเลื่อนหน้า/เลื่อนตารางระหว่างเปิดอยู่ ตำแหน่งจะไม่ตามปุ่มไป
+   *  จึงปิดเมนูทิ้งไปเลยเมื่อมีการเลื่อน (ใช้ capture:true เพราะตารางเลื่อนแนวนอนเป็น scroll event ของ element ลูก ไม่ bubble ขึ้นมา) */
+  @HostListener('window:scroll', ['$event'])
+  onScroll() {
+    if (this.openStatusMenuId !== null || this.openRowMenuId !== null) this.closeMenus();
   }
 
   selectStatus(d: DocumentSummary, key: string, event: MouseEvent) {
@@ -331,14 +358,17 @@ export class DocumentsComponent implements OnInit {
     });
   }
 
-  // -- ยกเลิกเอกสาร (เปลี่ยนสถานะเป็น "ยกเลิก" เท่านั้น ไม่ลบออกจากระบบ) ต้องยืนยันก่อนเสมอ --
+  // -- ยกเลิกเอกสาร (เปลี่ยนสถานะเป็น "ยกเลิก" เท่านั้น ไม่ลบออกจากระบบ) ต้องยืนยัน + ระบุเหตุผลก่อนเสมอ --
+  // เหตุผลที่กรอกจะถูกเก็บไว้ดูภายในระบบเท่านั้น ไม่พิมพ์ลง PDF — แต่ PDF จะมีลายน้ำ "ยกเลิก" สีแดงแทน
   requestVoid(d: DocumentSummary) {
     this.openStatusMenuId = null;
     this.openRowMenuId = null;
+    this.voidReasonInput = '';
     this.confirm = {
-      message: `ยืนยันยกเลิกเอกสาร "${d.doc_number}"? เอกสารจะถูกเปลี่ยนสถานะเป็น "ยกเลิก"`,
+      message: `ยืนยันยกเลิกเอกสาร "${d.doc_number}"? เอกสารจะถูกเปลี่ยนสถานะเป็น "ยกเลิก" และมีลายน้ำสีแดงบน PDF`,
       confirmLabel: 'ยกเลิกเอกสาร',
       danger: true,
+      requireReason: true,
       onConfirm: () => this.confirmVoid(d),
     };
   }
@@ -349,20 +379,24 @@ export class DocumentsComponent implements OnInit {
   }
 
   private confirmVoid(d: DocumentSummary) {
-    this.api.updateDocument(d.id, { status: 'void' }).subscribe({
+    const reason = this.voidReasonInput.trim();
+    if (!reason) return;
+    this.api.updateDocument(d.id, { status: 'void', void_reason: reason }).subscribe({
       next: () => {
         d.status = 'void';
         this.confirm = null;
+        this.voidReasonInput = '';
       },
-      error: () => {
+      error: (err) => {
         this.confirm = null;
-        this.actionError = 'ยกเลิกเอกสารไม่สำเร็จ';
+        this.actionError = err?.error?.error || 'ยกเลิกเอกสารไม่สำเร็จ';
       },
     });
   }
 
   cancelConfirm() {
     this.confirm = null;
+    this.voidReasonInput = '';
   }
 
   // -- ทำสำเนาเอกสาร: สร้างฉบับร่างใหม่ทันทีจากข้อมูลเดิม แล้วพาไปหน้าแก้ไข --

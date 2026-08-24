@@ -81,6 +81,9 @@ export class DocumentFormComponent implements OnInit {
   issueDate = new Date().toISOString().slice(0, 10);
   dueDate = this.defaultDueDate();
   status = 'draft';
+  private originalStatus = 'draft';
+  /** เหตุผลตอนยกเลิกเอกสาร (บังคับกรอกตอนเปลี่ยนเป็น "ยกเลิก" ครั้งแรก) — เก็บไว้ดูภายในเท่านั้น ไม่พิมพ์ลง PDF */
+  voidReason = '';
 
   signLeftLabel = 'ผู้ออกเอกสาร';
   signRightLabel = 'ผู้รับเอกสาร';
@@ -111,8 +114,22 @@ export class DocumentFormComponent implements OnInit {
   manualDocNumber = '';
   private numberCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // -- เอกสารที่ "ยกเลิก" แล้ว: ห้ามแก้ไขเนื้อหา เปลี่ยนได้แค่สถานะ (เผื่อกดยกเลิกผิด) --
+  revertStatus = 'draft';
+  revertingStatus = false;
+  revertNumberCheck: DocNumberCheck | null = null;
+
   get isEdit(): boolean {
     return this.editId !== null;
+  }
+
+  get isLocked(): boolean {
+    return this.isEdit && this.originalStatus === 'void';
+  }
+
+  /** ตัวเลือกสถานะที่เปลี่ยนกลับไปได้ตอนกู้เอกสารที่ยกเลิกแล้ว — ไม่รวม "ยกเลิก" เอง */
+  get revertStatusOptions() {
+    return this.statusOptions.filter((o) => o.value !== 'void');
   }
 
   constructor(
@@ -207,6 +224,7 @@ export class DocumentFormComponent implements OnInit {
 
   /** เปลี่ยนประเภทเอกสารจากแท็บด้านบน — ถ้าเป็นเอกสารใหม่ ให้ดึงค่าเริ่มต้นของประเภทใหม่มาตั้งให้ด้วย */
   selectType(type: DocType) {
+    if (this.isLocked) return; // เอกสารที่ยกเลิกแล้วแก้ไขไม่ได้ (แท็บประเภทเอกสารไม่ใช่ form control จึง fieldset[disabled] คุมไม่ถึง)
     this.type = type;
     this.applyTypeDefaults(type);
     this.scheduleNumberCheck();
@@ -226,6 +244,8 @@ export class DocumentFormComponent implements OnInit {
         this.issueDate = doc.issue_date || this.issueDate;
         this.originalIssueDate = doc.issue_date || this.issueDate;
         this.status = doc.status || 'draft';
+        this.originalStatus = this.status;
+        this.voidReason = doc.void_reason || '';
         this.lines = doc.items.length
           ? doc.items.map((it) => ({ ...it }))
           : [{ name: '', quantity: 1, unit: 'ชิ้น', unit_price: 0 }];
@@ -254,10 +274,44 @@ export class DocumentFormComponent implements OnInit {
         this.combinedReceipt = !!doc.combined_receipt;
         this.theme = doc.theme === 'minimal' ? 'minimal' : 'modern';
         this.loadingDoc = false;
+        // เอกสารนี้ถูกยกเลิกไว้ — เช็คทันทีว่าถ้าจะเปลี่ยนสถานะกลับ (ใช้ประเภท/วันที่ออกเอกสารเดิม) จะเรียงลำดับเลขที่เอกสาร
+        // ผิดที่หรือไม่ (เช่น มีเอกสารใหม่กว่าออกไปแล้วระหว่างที่เอกสารนี้ถูกยกเลิกอยู่) — เตือนไว้ก่อน ไม่บล็อกการกู้คืน
+        if (this.status === 'void') this.runRevertNumberCheck();
       },
       error: () => {
         this.error = 'โหลดเอกสารไม่สำเร็จ';
         this.loadingDoc = false;
+      },
+    });
+  }
+
+  /** เปลี่ยน "สถานะที่จะเปลี่ยนกลับไป" ตอนกู้เอกสารที่ยกเลิกแล้ว — เช็คลำดับเลขที่เอกสารใหม่ทุกครั้งที่เลือกเปลี่ยน */
+  onRevertStatusChange(value: string) {
+    this.revertStatus = value;
+    this.runRevertNumberCheck();
+  }
+
+  private runRevertNumberCheck() {
+    this.api.checkDocNumberOrder(this.type, this.issueDate, this.editId).subscribe({
+      next: (r) => (this.revertNumberCheck = r.conflict ? r : null),
+      error: () => (this.revertNumberCheck = null),
+    });
+  }
+
+  /** กู้เอกสารที่ยกเลิกแล้วกลับมาแก้ไขได้อีกครั้ง โดยเปลี่ยนแค่สถานะเท่านั้น (ไม่แตะเนื้อหาอื่นเลย ตรงกับที่ backend อนุญาต) */
+  changeStatusOnly() {
+    if (!this.editId) return;
+    this.revertingStatus = true;
+    this.error = '';
+    this.api.updateDocument(this.editId, { status: this.revertStatus }).subscribe({
+      next: () => {
+        this.revertingStatus = false;
+        this.status = this.revertStatus;
+        this.originalStatus = this.revertStatus;
+      },
+      error: (err) => {
+        this.revertingStatus = false;
+        this.error = err?.error?.error || 'เปลี่ยนสถานะไม่สำเร็จ';
       },
     });
   }
@@ -399,6 +453,9 @@ export class DocumentFormComponent implements OnInit {
     }
     if (!this.customerId) return 'ต้องเลือกลูกค้าก่อนบันทึกเอกสาร';
     if (this.previewLines.length === 0) return 'ต้องเพิ่มรายการสินค้าอย่างน้อย 1 รายการ';
+    if (this.status === 'void' && this.originalStatus !== 'void' && !this.voidReason.trim()) {
+      return 'กรุณาระบุเหตุผลในการยกเลิกเอกสาร';
+    }
     return '';
   }
 
@@ -489,6 +546,7 @@ export class DocumentFormComponent implements OnInit {
       show_quantity: this.showQuantity,
       show_unit: this.showUnit,
       show_price: this.showPrice,
+      void_reason: this.status === 'void' ? this.voidReason.trim() : undefined,
       combined_receipt: this.type === 'invoice' ? this.combinedReceipt : false,
       theme: this.theme,
       // แทรกเลขที่เอกสารเอง (เช่น "QT-2026-08-0001-1") เฉพาะตอนสร้างใหม่และเปิดโหมดแก้เลขเองไว้ — ไม่ระบุ = ให้ระบบออกเลขอัตโนมัติ
@@ -536,6 +594,7 @@ export class DocumentFormComponent implements OnInit {
           show_quantity: payload.show_quantity,
           show_unit: payload.show_unit,
           show_price: payload.show_price,
+          void_reason: payload.void_reason,
           combined_receipt: payload.combined_receipt,
           theme: payload.theme,
         })
@@ -544,9 +603,9 @@ export class DocumentFormComponent implements OnInit {
             this.saving = false;
             this.router.navigate(['/documents']);
           },
-          error: () => {
+          error: (err) => {
             this.saving = false;
-            this.error = 'บันทึกการแก้ไขไม่สำเร็จ';
+            this.error = err?.error?.error || 'บันทึกการแก้ไขไม่สำเร็จ';
           },
         });
     } else {

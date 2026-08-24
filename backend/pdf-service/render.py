@@ -248,6 +248,19 @@ body {{
 }}
 .info-box .line {{ margin-bottom: 2px; line-height: 1.5; }}
 .info-box .name {{ font-weight: bold; }}
+/* ลายน้ำ "ยกเลิก" สีแดง — position: fixed ให้ขึ้นซ้ำทุกหน้าถ้าเอกสารยาวหลายหน้า */
+.watermark {{
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-28deg);
+    font-size: 120px;
+    font-weight: bold;
+    color: rgba(200, 30, 30, 0.28);
+    letter-spacing: 10px;
+    white-space: nowrap;
+    z-index: 999;
+}}
 table.items {{
     width: 100%;
     border-collapse: collapse;
@@ -334,6 +347,7 @@ TEMPLATE = """
 <html>
 <head><meta charset="utf-8"><style>{css}</style></head>
 <body>
+  {watermark_block}
   <div class="page-content">
     <div class="header">
       <div class="company-block">
@@ -475,6 +489,9 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
             f'<td class="value">{money(vat)} บาท</td></tr>'
         )
 
+    # ลายน้ำ "ยกเลิก" สีแดง แสดงเฉพาะเอกสารที่สถานะเป็น void — void_reason (ถ้ามี) ตั้งใจไม่พิมพ์ลง PDF เลย เก็บไว้ดูภายในระบบเท่านั้น
+    watermark_block = '<div class="watermark">ยกเลิก</div>' if doc.get("status") == "void" else ""
+
     # กล่องสรุปยอด (รวมเป็นเงิน/ส่วนลด/VAT/ยอดสุทธิ/ตัวหนังสือไทย) — แสดงเสมอ ไม่ผูกกับ toggle "ราคา/หน่วย"
     # เพราะคอลัมน์ "จำนวนเงิน" ยังคงแสดงอยู่แม้ปิดคอลัมน์ราคา/หน่วยไว้
     totals_block = (
@@ -508,6 +525,7 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
         totals_block=totals_block,
         note_block=note_block,
         signatures_block=signatures_block,
+        watermark_block=watermark_block,
     )
 
     HTML(string=html_str, base_url=BASE_DIR).write_pdf(out_path)

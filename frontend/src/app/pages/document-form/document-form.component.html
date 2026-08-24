@@ -36,9 +36,36 @@
   </div>
 </div>
 
+<!-- เอกสารที่ยกเลิกแล้ว: ดูได้อย่างเดียว แก้ไขเนื้อหาไม่ได้ (ฟอร์มด้านล่างถูกล็อกไว้ด้วย fieldset) — เปลี่ยนได้แค่สถานะ -->
+<div class="doc-number-warning" *ngIf="isLocked && !loadingDoc">
+  <p>
+    เอกสารนี้ถูก <strong>ยกเลิก</strong> ไว้ — แก้ไขเนื้อหาไม่ได้ ถ้ากดยกเลิกผิดหรือต้องการนำกลับมาใช้ ให้เปลี่ยนสถานะออกจาก "ยกเลิก" ก่อน
+    จึงจะแก้ไขเนื้อหาต่อได้ตามปกติ
+  </p>
+  <p *ngIf="voidReason" style="margin-top:6px;color:var(--color-text-muted)">เหตุผลที่ยกเลิก (ดูภายในเท่านั้น): {{ voidReason }}</p>
+
+  <div class="doc-number-manual" style="margin-top:10px">
+    <label>
+      เปลี่ยนสถานะเป็น
+      <select [ngModel]="revertStatus" (ngModelChange)="onRevertStatusChange($event)" name="revertStatus" [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let opt of revertStatusOptions" [value]="opt.value">{{ opt.label }}</option>
+      </select>
+    </label>
+    <button type="button" [disabled]="revertingStatus" (click)="changeStatusOnly()">
+      {{ revertingStatus ? 'กำลังบันทึก...' : 'เปลี่ยนสถานะ' }}
+    </button>
+  </div>
+
+  <p *ngIf="revertNumberCheck" style="margin-top:10px;color:#8a6d1d">
+    ⚠️ วันที่ออกเอกสารนี้ ({{ issueDate }}) ย้อนหลังกว่าเอกสารล่าสุดของเดือนนี้แล้ว (เลขที่ {{ revertNumberCheck.latest_number }}
+    วันที่ {{ revertNumberCheck.latest_issue_date }}) — เปลี่ยนสถานะกลับได้ตามปกติ แต่เลขที่เอกสารนี้จะไม่เรียงตามลำดับวันที่อีกต่อไป
+  </p>
+  <p class="error" *ngIf="error">{{ error }}</p>
+</div>
+
 <form (ngSubmit)="submit()" *ngIf="!loadingDoc">
   <div class="doc-form-layout">
-    <div class="doc-form-main">
+    <fieldset class="doc-form-main" [disabled]="isLocked">
       <div class="card">
         <h3>ข้อมูลเอกสาร</h3>
         <label [class.label-error]="!customerId">
@@ -65,6 +92,11 @@
             </select>
           </label>
         </div>
+
+        <label style="margin-top:12px" *ngIf="status === 'void'">
+          เหตุผลในการยกเลิก (เก็บไว้ดูภายในเท่านั้น ไม่แสดงบนเอกสาร — บน PDF จะมีลายน้ำ "ยกเลิก" สีแดงแทน)
+          <textarea [(ngModel)]="voidReason" name="voidReason" rows="2" placeholder="เช่น ลูกค้ายกเลิกออเดอร์ / กรอกข้อมูลผิด"></textarea>
+        </label>
 
         <div style="margin-top:12px">
           <div class="field-toggle-row">
@@ -275,7 +307,7 @@
           />
         </div>
       </div>
-    </div>
+    </fieldset>
 
     <div class="doc-preview-col">
       <div class="doc-preview-headerbar">
@@ -364,11 +396,11 @@
       <p class="warning-banner" *ngIf="validationMessage">ยังบันทึกไม่ได้ — {{ validationMessage }}</p>
       <p class="error" *ngIf="error">{{ error }}</p>
 
-      <button type="submit" class="btn-primary-icon" [disabled]="saving || !canSave" style="width:100%">
+      <button type="submit" class="btn-primary-icon" [disabled]="saving || !canSave || isLocked" style="width:100%">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         {{ saving ? 'กำลังบันทึก...' : (isEdit ? 'บันทึกการแก้ไข' : 'บันทึกและสร้างเอกสาร') }}
       </button>
-      <button type="button" class="btn-secondary btn-icon" [disabled]="previewing" style="width:100%" (click)="preview()">
+      <button type="button" class="btn-secondary btn-icon" [disabled]="previewing || isLocked" style="width:100%" (click)="preview()">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
         {{ previewing ? 'กำลังสร้างตัวอย่าง...' : 'ดูตัวอย่าง PDF เต็มหน้า' }}
       </button>

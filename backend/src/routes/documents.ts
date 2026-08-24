@@ -368,6 +368,17 @@ router.put("/:id", async (req, res) => {
   const existing = await one<any>("SELECT * FROM documents WHERE id = $1", [id]);
   if (!existing) return res.status(404).json({ error: "ไม่พบเอกสาร" });
 
+  // เอกสารที่ "ยกเลิก" แล้วแก้ไขเนื้อหาไม่ได้อีก (กันข้อมูล ณ ตอนยกเลิกถูกแก้ทับ เสียความหมายของการเก็บหลักฐาน)
+  // ยกเว้นเปลี่ยนสถานะออกจาก "ยกเลิก" ได้เพียงอย่างเดียว (เผื่อกดยกเลิกผิด) — request ต้องมีแค่ field "status" เท่านั้น
+  if (existing.status === "void") {
+    const otherKeys = Object.keys(req.body || {}).filter((k) => k !== "status");
+    if (otherKeys.length > 0) {
+      return res
+        .status(400)
+        .json({ error: 'เอกสารนี้ถูกยกเลิกแล้ว แก้ไขเนื้อหาไม่ได้ — เปลี่ยนสถานะออกจาก "ยกเลิก" ก่อนจึงจะแก้ไขได้' });
+    }
+  }
+
   const {
     type,
     customer_id,
@@ -383,12 +394,18 @@ router.put("/:id", async (req, res) => {
     show_quantity,
     show_unit,
     show_price,
+    void_reason,
     combined_receipt,
     theme,
   } = req.body;
 
   if (theme !== undefined && !VALID_THEMES.includes(theme)) {
     return res.status(400).json({ error: "ธีมเอกสารไม่ถูกต้อง" });
+  }
+
+  // เปลี่ยนสถานะเป็น "ยกเลิก" ครั้งแรก (ยังไม่เคยยกเลิกมาก่อน) ต้องระบุเหตุผลเสมอ — เก็บไว้ดูภายในเท่านั้น ไม่พิมพ์ลง PDF
+  if (status === "void" && existing.status !== "void" && !(void_reason && String(void_reason).trim())) {
+    return res.status(400).json({ error: "กรุณาระบุเหตุผลในการยกเลิกเอกสาร" });
   }
 
   if (customer_id !== undefined) {
@@ -435,9 +452,10 @@ router.put("/:id", async (req, res) => {
        show_quantity = COALESCE($12, show_quantity),
        show_unit = COALESCE($13, show_unit),
        show_price = COALESCE($14, show_price),
-       combined_receipt = COALESCE($15, combined_receipt),
-       theme = COALESCE($16, theme)
-     WHERE id = $17`,
+       void_reason = COALESCE($15, void_reason),
+       combined_receipt = COALESCE($16, combined_receipt),
+       theme = COALESCE($17, theme)
+     WHERE id = $18`,
     [
       newDocType,
       newDocNumber,
@@ -453,6 +471,7 @@ router.put("/:id", async (req, res) => {
       show_quantity ?? null,
       show_unit ?? null,
       show_price ?? null,
+      void_reason ?? null,
       combined_receipt !== undefined ? !!combined_receipt : null,
       theme ?? null,
       id,
