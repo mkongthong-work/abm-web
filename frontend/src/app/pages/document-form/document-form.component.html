@@ -157,7 +157,7 @@
               </label>
             </label>
             <label class="toggle-label">
-              <span>แสดงราคา/จำนวนเงิน</span>
+              <span>แสดงราคา/หน่วย</span>
               <label class="toggle-switch">
                 <input type="checkbox" [(ngModel)]="showPrice" name="showPrice" />
                 <span class="slider"></span>
@@ -165,14 +165,17 @@
             </label>
           </div>
         </div>
+        <p style="font-size:11px;color:#a5aeae;margin:0;padding:0 20px 10px" *ngIf="!showPrice">
+          ปิดคอลัมน์ "ราคา/หน่วย" นี้จะซ่อนเฉพาะบนเอกสาร/PDF เท่านั้น — ในตารางแก้ไขนี้ยังกรอกราคาได้ตามปกติ เพื่อให้คำนวณ "จำนวนเงิน" ถูกต้อง
+        </p>
         <table class="line-items-table">
           <thead>
             <tr>
               <th>ชื่อรายการ</th>
               <th class="num" style="width:64px" *ngIf="showQuantity">จำนวน</th>
               <th style="width:60px" *ngIf="showUnit">หน่วย</th>
-              <th class="num" style="width:90px" *ngIf="showPrice">ราคา/หน่วย</th>
-              <th class="num" style="width:90px" *ngIf="showPrice">จำนวนเงิน</th>
+              <th class="num" style="width:90px">ราคา/หน่วย</th>
+              <th class="num" style="width:90px">จำนวนเงิน</th>
               <th style="width:26px"></th>
             </tr>
           </thead>
@@ -199,8 +202,8 @@
               </td>
               <td *ngIf="showQuantity"><input type="number" min="0.01" step="any" [(ngModel)]="line.quantity" [name]="'qty'+idx" /></td>
               <td *ngIf="showUnit"><input [(ngModel)]="line.unit" [name]="'unit'+idx" /></td>
-              <td *ngIf="showPrice"><input type="number" min="0" step="any" [(ngModel)]="line.unit_price" [name]="'price'+idx" /></td>
-              <td class="num mono" style="color:#6b7878" *ngIf="showPrice">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
+              <td><input type="number" min="0" step="any" [(ngModel)]="line.unit_price" [name]="'price'+idx" /></td>
+              <td class="num mono" style="color:#6b7878">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
               <td><button type="button" class="link" (click)="removeLine(idx)">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
               </button></td>
@@ -211,7 +214,7 @@
           <button type="button" class="btn-secondary" (click)="addLine()">+ เพิ่มรายการ</button>
           <span style="font-size:12px;color:#a5aeae;margin-left:12px">เลือกจากรายการสินค้า/บริการที่บันทึกไว้ได้จากช่องด้านบนชื่อรายการ · ในช่องชื่อรายการ กด Enter เพื่อขึ้นบรรทัดใหม่ได้</span>
         </div>
-        <div class="line-items-totals" *ngIf="showPrice">
+        <div class="line-items-totals">
           <div class="totals">
             <div class="totals-row"><span>รวมเป็นเงิน</span><span>{{ subtotal | number:'1.2-2' }}</span></div>
             <div class="totals-row" *ngIf="discountEnabled"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
@@ -326,7 +329,7 @@
                   <th>รายการ</th>
                   <th class="num" style="width:36px" *ngIf="showQuantity">จำนวน</th>
                   <th style="width:40px" *ngIf="showUnit">หน่วย</th>
-                  <th class="num" style="width:64px" *ngIf="showPrice">จำนวนเงิน</th>
+                  <th class="num" style="width:64px">จำนวนเงิน</th>
                 </tr>
               </thead>
               <tbody>
@@ -334,15 +337,15 @@
                   <td style="white-space:pre-line">{{ line.name }}</td>
                   <td class="num" *ngIf="showQuantity">{{ line.quantity | number:'1.0-2' }}</td>
                   <td *ngIf="showUnit">{{ line.unit }}</td>
-                  <td class="num" *ngIf="showPrice">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
+                  <td class="num">{{ effectiveQty(line) * (line.unit_price || 0) | number:'1.2-2' }}</td>
                 </tr>
                 <tr *ngIf="previewLines.length === 0">
-                  <td [attr.colspan]="1 + (showQuantity ? 1 : 0) + (showUnit ? 1 : 0) + (showPrice ? 1 : 0)" class="doc-preview-empty">ยังไม่มีรายการสินค้า/บริการ</td>
+                  <td [attr.colspan]="2 + (showQuantity ? 1 : 0) + (showUnit ? 1 : 0)" class="doc-preview-empty">ยังไม่มีรายการสินค้า/บริการ</td>
                 </tr>
               </tbody>
             </table>
 
-            <div class="doc-preview-totals" *ngIf="showPrice">
+            <div class="doc-preview-totals">
               <div class="row"><span>รวมเป็นเงิน</span><span>{{ subtotal | number:'1.2-2' }}</span></div>
               <div class="row" *ngIf="discountEnabled"><span>ส่วนลด</span><span>-{{ discount | number:'1.2-2' }}</span></div>
               <div class="row" *ngIf="vatEnabled"><span>ภาษีมูลค่าเพิ่ม ({{ vatRate }}%)</span><span>{{ vat | number:'1.2-2' }}</span></div>

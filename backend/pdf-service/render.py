@@ -415,7 +415,7 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
         thead_cells.append('<th style="width:60px;">หน่วย</th>')
     if show_price_col:
         thead_cells.append('<th class="num" style="width:90px;">ราคา/หน่วย</th>')
-        thead_cells.append('<th class="num" style="width:100px;">จำนวนเงิน</th>')
+    thead_cells.append('<th class="num" style="width:100px;">จำนวนเงิน</th>')
     items_thead = "".join(thead_cells)
 
     item_rows = []
@@ -434,7 +434,7 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
             cells.append(f"<td>{esc(it['unit'])}</td>")
         if show_price_col:
             cells.append(f'<td class="num">{money(it["unit_price"])}</td>')
-            cells.append(f'<td class="num">{money(amount)}</td>')
+        cells.append(f'<td class="num">{money(amount)}</td>')
         item_rows.append(f"<tr>{''.join(cells)}</tr>")
 
     due_date_row = ""
@@ -475,18 +475,16 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
             f'<td class="value">{money(vat)} บาท</td></tr>'
         )
 
-    # ซ่อนกล่องสรุปยอดทั้งหมด (รวมเป็นเงิน/ส่วนลด/VAT/ยอดสุทธิ/ตัวหนังสือไทย) เมื่อปิด toggle "ราคา/หน่วย" ไว้
-    # เพราะไม่มีราคาให้สรุปยอดแล้ว (เช่น ใช้ทำใบส่งของที่ไม่ต้องการโชว์ราคา)
-    totals_block = ""
-    if show_price_col:
-        totals_block = (
-            '<div class="totals"><table>'
-            f'<tr><td class="label">รวมเป็นเงิน</td><td class="value">{money(subtotal)} บาท</td></tr>'
-            f"{discount_row}{vat_row}"
-            f'<tr class="grand"><td class="label">ยอดรวมสุทธิ</td><td class="value">{money(total)} บาท</td></tr>'
-            "</table>"
-            f'<div class="baht-text">({thai_baht_text(total)})</div></div>'
-        )
+    # กล่องสรุปยอด (รวมเป็นเงิน/ส่วนลด/VAT/ยอดสุทธิ/ตัวหนังสือไทย) — แสดงเสมอ ไม่ผูกกับ toggle "ราคา/หน่วย"
+    # เพราะคอลัมน์ "จำนวนเงิน" ยังคงแสดงอยู่แม้ปิดคอลัมน์ราคา/หน่วยไว้
+    totals_block = (
+        '<div class="totals"><table>'
+        f'<tr><td class="label">รวมเป็นเงิน</td><td class="value">{money(subtotal)} บาท</td></tr>'
+        f"{discount_row}{vat_row}"
+        f'<tr class="grand"><td class="label">ยอดรวมสุทธิ</td><td class="value">{money(total)} บาท</td></tr>'
+        "</table>"
+        f'<div class="baht-text">({thai_baht_text(total)})</div></div>'
+    )
 
     html_str = TEMPLATE.format(
         css=build_css(accent, minimal=is_minimal),
