@@ -41,10 +41,11 @@ async function nextDocNumber(docType: string, refDate: Date = new Date()): Promi
   return `${prefix}-${year}-${month}-${String(seq + 1).padStart(4, "0")}`;
 }
 
-// ตั้งชื่อไฟล์ PDF ที่ดาวน์โหลดเป็น "ชื่อบริษัท-เลขที่เอกสาร.pdf" (ตัดอักขระที่ใช้ในชื่อไฟล์ไม่ได้ออก)
-function pdfFilename(companyName: string | null | undefined, docNumber: string): string {
-  const safeCompany = (companyName || "เอกสาร").replace(/[\/\\:*?"<>|]/g, "-").trim();
-  return `${safeCompany}-${docNumber}.pdf`;
+// ตั้งชื่อไฟล์ PDF ที่ดาวน์โหลดเป็น "ชื่อลูกค้า-เลขที่เอกสาร.pdf" (ตัดอักขระที่ใช้ในชื่อไฟล์ไม่ได้ออก
+// รวมถึงตัดขึ้นบรรทัดใหม่ทิ้ง เผื่อชื่อลูกค้าถูกพิมพ์หลายบรรทัด)
+function pdfFilename(customerName: string | null | undefined, docNumber: string): string {
+  const safeCustomer = (customerName || "เอกสาร").replace(/[\/\\:*?"<>|]/g, "-").replace(/\s*\n\s*/g, " ").trim();
+  return `${safeCustomer}-${docNumber}.pdf`;
 }
 
 // HTTP header เดิมรองรับแค่ ASCII จึงต้องเข้ารหัสชื่อไฟล์ภาษาไทยแบบ RFC 5987 (filename*)
@@ -505,7 +506,7 @@ router.get("/:id/pdf", async (req, res) => {
       out_path: tmpOut,
     });
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", contentDispositionAttachment(pdfFilename((company as any)?.name, doc.doc_number)));
+    res.setHeader("Content-Disposition", contentDispositionAttachment(pdfFilename((customer as any)?.name, doc.doc_number)));
     fs.createReadStream(tmpOut).pipe(res).on("close", () => fs.unlink(tmpOut, () => {}));
   } catch (err: any) {
     res.status(500).json({ error: "สร้าง PDF ไม่สำเร็จ", detail: err.message });
