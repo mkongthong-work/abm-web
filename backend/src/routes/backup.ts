@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { many, one, withTransaction } from "../db";
+import { many, one, run, withTransaction } from "../db";
 import { sendBackupEmail } from "../mailer";
 import { requireAuth } from "./auth";
 
@@ -46,6 +46,7 @@ function backupFilename() {
 // ดาวน์โหลดข้อมูลสำรองแบบ manual จากหน้าตั้งค่า (ผ่าน requireAuth ตามปกติที่ mount ไว้ใน server.ts)
 router.get("/export", requireAuth, async (req, res) => {
   const payload = await buildBackupPayload();
+  await run("UPDATE company SET last_backup_at = NOW() WHERE id = 1");
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Content-Disposition", `attachment; filename="${backupFilename()}"`);
   res.send(JSON.stringify(payload, null, 2));
@@ -180,6 +181,7 @@ router.get("/run", async (req, res) => {
     const payload = await buildBackupPayload();
     const buffer = Buffer.from(JSON.stringify(payload, null, 2), "utf-8");
     await sendBackupEmail(buffer, backupFilename());
+    await run("UPDATE company SET last_backup_at = NOW() WHERE id = 1");
     res.json({ ok: true, sent_at: new Date().toISOString() });
   } catch (err: any) {
     res.status(500).json({ error: `ส่งอีเมลข้อมูลสำรองไม่สำเร็จ: ${err.message}` });

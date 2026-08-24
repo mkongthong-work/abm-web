@@ -22,6 +22,9 @@ ALTER TABLE company ADD COLUMN IF NOT EXISTS invoice_color   TEXT NOT NULL DEFAU
 ALTER TABLE company ADD COLUMN IF NOT EXISTS receipt_color   TEXT NOT NULL DEFAULT '#7c3aed';
 -- รหัส PIN เข้าระบบ ตั้งได้จากหน้าตั้งค่าบริษัทในแอป (ไม่ต้องไปตั้งที่ ENV ของ Render ก็ได้ — ถ้าตั้งไว้ทั้งคู่ ค่านี้ในฐานข้อมูลมีสิทธิ์เหนือกว่า)
 ALTER TABLE company ADD COLUMN IF NOT EXISTS access_pin TEXT;
+-- เวลาที่แก้ไข/ตั้ง PIN ล่าสุด (โชว์ในหน้าตั้งค่า) และเวลาที่ดาวน์โหลด/ส่งข้อมูลสำรองล่าสุด (ทั้งกดเองและ cron อัตโนมัติ)
+ALTER TABLE company ADD COLUMN IF NOT EXISTS access_pin_updated_at TIMESTAMPTZ;
+ALTER TABLE company ADD COLUMN IF NOT EXISTS last_backup_at TIMESTAMPTZ;
 
 -- ลูกค้า
 CREATE TABLE IF NOT EXISTS customers (

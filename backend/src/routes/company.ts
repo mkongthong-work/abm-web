@@ -52,7 +52,8 @@ router.put("/", async (req, res) => {
        quotation_color = COALESCE($7, quotation_color),
        invoice_color = COALESCE($8, invoice_color),
        receipt_color = COALESCE($9, receipt_color),
-       access_pin = COALESCE($10, access_pin)
+       access_pin = COALESCE($10, access_pin),
+       access_pin_updated_at = CASE WHEN $10::text IS NOT NULL THEN NOW() ELSE access_pin_updated_at END
      WHERE id = 1`,
     [
       name ?? null,

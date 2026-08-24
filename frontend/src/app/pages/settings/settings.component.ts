@@ -4,6 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { Company } from '../../models/models';
 
+const THAI_MONTHS_SHORT = [
+  'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
+];
+
+type SettingsTab = 'company' | 'colors' | 'security' | 'backup' | 'danger';
+
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -12,6 +19,15 @@ import { Company } from '../../models/models';
   styleUrl: './settings.component.scss',
 })
 export class SettingsComponent implements OnInit {
+  readonly tabs: { key: SettingsTab; label: string }[] = [
+    { key: 'company', label: 'ข้อมูลบริษัท' },
+    { key: 'colors', label: 'สีเอกสาร' },
+    { key: 'security', label: 'ความปลอดภัย' },
+    { key: 'backup', label: 'ข้อมูลสำรอง' },
+    { key: 'danger', label: 'โซนอันตราย' },
+  ];
+  activeTab: SettingsTab = 'company';
+
   form: Partial<Company> = {
     name: '',
     address: '',
@@ -23,6 +39,8 @@ export class SettingsComponent implements OnInit {
     invoice_color: '#2563eb',
     receipt_color: '#7c3aed',
   };
+  /** สแนปช็อตค่าที่โหลดมาล่าสุด (หรือบันทึกสำเร็จล่าสุด) — ใช้เทียบว่าแก้ไขอะไรไปบ้าง และไว้ "ยกเลิกการแก้ไข" กลับมาที่ค่านี้ */
+  private original: Partial<Company> = { ...this.form };
 
   loading = false;
   saving = false;
@@ -42,6 +60,7 @@ export class SettingsComponent implements OnInit {
   pendingRestoreFile: File | null = null;
 
   // -- โซนอันตราย: ลบเอกสาร --
+  dangerUnlocked = false;
   deletingDocs = false;
   deleteDocsError = '';
   deleteDocsSuccess = '';
@@ -58,11 +77,78 @@ export class SettingsComponent implements OnInit {
     this.load();
   }
 
+  setTab(tab: SettingsTab) {
+    this.activeTab = tab;
+  }
+
+  get showPreview(): boolean {
+    return this.activeTab === 'company' || this.activeTab === 'colors';
+  }
+
+  // -- นับจำนวนฟิลด์ที่แก้ไปแล้วยังไม่บันทึก ต่อแท็บ (โชว์เป็น badge บนแท็บ + ข้อความในแถบบันทึก) --
+  private readonly companyFields: (keyof Company)[] = ['name', 'address', 'tax_id', 'phone', 'email', 'logo_path'];
+  private readonly colorFields: (keyof Company)[] = ['quotation_color', 'invoice_color', 'receipt_color'];
+
+  private fieldsChangedCount(keys: (keyof Company)[]): number {
+    return keys.filter((k) => ((this.form as any)[k] ?? '') !== ((this.original as any)[k] ?? '')).length;
+  }
+
+  get companyChangedCount(): number {
+    return this.fieldsChangedCount(this.companyFields);
+  }
+
+  get colorsChangedCount(): number {
+    return this.fieldsChangedCount(this.colorFields);
+  }
+
+  get securityChangedCount(): number {
+    return this.currentPinInput || this.newPinInput || this.confirmPinInput ? 1 : 0;
+  }
+
+  tabChangedCount(tab: SettingsTab): number {
+    switch (tab) {
+      case 'company':
+        return this.companyChangedCount;
+      case 'colors':
+        return this.colorsChangedCount;
+      case 'security':
+        return this.securityChangedCount;
+      default:
+        return 0;
+    }
+  }
+
+  get totalChanged(): number {
+    return this.companyChangedCount + this.colorsChangedCount + this.securityChangedCount;
+  }
+
+  get isDirty(): boolean {
+    return this.totalChanged > 0;
+  }
+
+  get dirtyLabel(): string {
+    if (this.saved) return 'บันทึกแล้ว';
+    if (this.isDirty) return `แก้ไข ${this.totalChanged} รายการ ยังไม่บันทึก`;
+    return 'ไม่มีการแก้ไข';
+  }
+
+  // -- แสดงวันที่แบบไทย (วัน เดือนย่อ พ.ศ. 4 หลัก) ใช้กับ access_pin_updated_at / last_backup_at --
+  formatThaiDate(dateStr: string | undefined | null): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const day = d.getDate();
+    const month = THAI_MONTHS_SHORT[d.getMonth()];
+    const beYear = d.getFullYear() + 543;
+    return `${day} ${month} ${beYear}`;
+  }
+
   load() {
     this.loading = true;
     this.api.getCompany().subscribe({
       next: (c) => {
         this.form = { ...c };
+        this.original = { ...c };
         this.loading = false;
       },
       error: () => {
@@ -70,6 +156,25 @@ export class SettingsComponent implements OnInit {
         this.loading = false;
       },
     });
+  }
+
+  discard() {
+    this.form = { ...this.original };
+    this.currentPinInput = '';
+    this.newPinInput = '';
+    this.confirmPinInput = '';
+    this.pinError = '';
+    this.error = '';
+    this.saved = false;
+  }
+
+  resetColors() {
+    this.form = {
+      ...this.form,
+      quotation_color: this.original.quotation_color ?? '#0d9488',
+      invoice_color: this.original.invoice_color ?? '#2563eb',
+      receipt_color: this.original.receipt_color ?? '#7c3aed',
+    };
   }
 
   submit() {
@@ -83,6 +188,8 @@ export class SettingsComponent implements OnInit {
     const payload: Partial<Company> = { ...this.form };
     delete payload.has_access_pin; // อ่านอย่างเดียว ไม่ต้องส่งกลับ
     delete payload.access_pin;
+    delete (payload as any).access_pin_updated_at;
+    delete (payload as any).last_backup_at;
 
     const changingPin = !!(this.currentPinInput || this.newPinInput || this.confirmPinInput);
     if (changingPin) {
@@ -107,6 +214,7 @@ export class SettingsComponent implements OnInit {
     this.api.updateCompany(payload).subscribe({
       next: (c) => {
         this.form = { ...c };
+        this.original = { ...c };
         this.currentPinInput = '';
         this.newPinInput = '';
         this.confirmPinInput = '';
@@ -172,8 +280,13 @@ export class SettingsComponent implements OnInit {
     });
   }
 
-  // -- โซนอันตราย: ลบเอกสารทั้งหมด --
+  // -- โซนอันตราย --
+  toggleDangerUnlock() {
+    this.dangerUnlocked = !this.dangerUnlocked;
+  }
+
   requestDeleteAllDocuments() {
+    if (!this.dangerUnlocked) return;
     this.deleteDocsError = '';
     this.deleteDocsSuccess = '';
     this.confirmTypedInput = '';
@@ -210,6 +323,7 @@ export class SettingsComponent implements OnInit {
 
   // -- โซนอันตราย: ลบเอกสารตามช่วงวันที่ (เช็คจำนวนที่จะโดนลบก่อน แล้วค่อยให้ยืนยัน) --
   requestDeleteByRange() {
+    if (!this.dangerUnlocked) return;
     if (!this.deleteFromDate && !this.deleteToDate) {
       this.deleteDocsError = 'กรุณาเลือกช่วงวันที่อย่างน้อยหนึ่งด้าน';
       return;

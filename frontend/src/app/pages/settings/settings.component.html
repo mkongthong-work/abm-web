@@ -5,181 +5,216 @@
 
 <p *ngIf="loading">กำลังโหลด...</p>
 
-<form (ngSubmit)="submit()" *ngIf="!loading">
-  <div class="settings-layout">
-    <div class="settings-main">
-    <div class="card">
-      <h3>ข้อมูลบริษัท</h3>
-      <div class="grid">
-        <label style="grid-column:1/-1">
-          ชื่อบริษัท
-          <input [(ngModel)]="form.name" name="name" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" />
-        </label>
-        <label style="grid-column:1/-1">
-          ที่อยู่
-          <textarea [(ngModel)]="form.address" name="address" rows="2" placeholder="เลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์"></textarea>
-        </label>
-        <label>
-          เลขประจำตัวผู้เสียภาษี
-          <input [(ngModel)]="form.tax_id" name="tax_id" placeholder="0000000000000" />
-        </label>
-        <label>
-          เบอร์โทรศัพท์
-          <input [(ngModel)]="form.phone" name="phone" placeholder="02-000-0000" />
-        </label>
-        <label style="grid-column:1/-1">
-          อีเมล
-          <input type="email" [(ngModel)]="form.email" name="email" placeholder="info@example.com" />
-        </label>
-        <label style="grid-column:1/-1">
-          โลโก้ (ลิงก์รูปภาพ)
-          <input [(ngModel)]="form.logo_path" name="logo_path" placeholder="https://..." />
-        </label>
-      </div>
+<form (ngSubmit)="submit()" *ngIf="!loading" class="settings-shell">
+  <div class="settings-tabs">
+    <button
+      type="button"
+      *ngFor="let t of tabs"
+      class="settings-tab-btn"
+      [class.active]="activeTab === t.key"
+      [class.danger-tab]="t.key === 'danger'"
+      (click)="setTab(t.key)"
+    >
+      <span>{{ t.label }}</span>
+      <span class="settings-tab-badge" *ngIf="tabChangedCount(t.key) > 0">{{ tabChangedCount(t.key) }}</span>
+    </button>
+    <div class="settings-tab-hint">แก้ได้ทีละหมวด กด <strong>บันทึกการตั้งค่า</strong> ครั้งเดียวพอ</div>
+  </div>
 
-    </div>
-
-    <div class="card">
-      <h3>สีเอกสาร</h3>
-      <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">กำหนดสีประจำเอกสารแต่ละประเภท เพื่อให้แยกแยะได้ง่ายทั้งในหน้าตัวอย่างและไฟล์ PDF</p>
-
-      <div class="color-field-row">
-        <span class="swatch" [style.background]="form.quotation_color"></span>
-        <label style="flex:1">
-          ใบเสนอราคา
-          <div class="color-input-group">
-            <input type="color" [(ngModel)]="form.quotation_color" name="quotation_color" />
-            <input type="text" [(ngModel)]="form.quotation_color" name="quotation_color_hex" placeholder="#0d9488" />
+  <div class="settings-body">
+    <div class="settings-panel-wrap">
+      <div class="settings-panel">
+        <!-- ============ ข้อมูลบริษัท ============ -->
+        <div class="card" *ngIf="activeTab === 'company'">
+          <h3>ข้อมูลบริษัท</h3>
+          <p class="settings-panel-hint">ชื่อ ที่อยู่ และช่องทางติดต่อที่พิมพ์ลงเอกสาร</p>
+          <div class="grid">
+            <label class="block" style="grid-column: 1 / -1">
+              ชื่อบริษัท
+              <input [(ngModel)]="form.name" name="name" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" />
+            </label>
+            <label class="block" style="grid-column: 1 / -1">
+              ที่อยู่
+              <textarea rows="2" [(ngModel)]="form.address" name="address" placeholder="เลขที่ ถนน แขวง เขต จังหวัด รหัสไปรษณีย์"></textarea>
+            </label>
+            <label>
+              เลขประจำตัวผู้เสียภาษี
+              <input [(ngModel)]="form.tax_id" name="tax_id" placeholder="0000000000000" />
+            </label>
+            <label>
+              เบอร์โทรศัพท์
+              <input [(ngModel)]="form.phone" name="phone" placeholder="02-000-0000" />
+            </label>
+            <label>
+              อีเมล
+              <input [(ngModel)]="form.email" name="email" placeholder="info@example.com" />
+            </label>
+            <label>
+              โลโก้ (ลิงก์รูปภาพ)
+              <input [(ngModel)]="form.logo_path" name="logo_path" placeholder="https://…" />
+            </label>
           </div>
-        </label>
-      </div>
+          <img *ngIf="form.logo_path" [src]="form.logo_path" class="settings-logo-preview" alt="ตัวอย่างโลโก้" />
+        </div>
 
-      <div class="color-field-row">
-        <span class="swatch" [style.background]="form.invoice_color"></span>
-        <label style="flex:1">
-          ใบแจ้งหนี้
-          <div class="color-input-group">
-            <input type="color" [(ngModel)]="form.invoice_color" name="invoice_color" />
-            <input type="text" [(ngModel)]="form.invoice_color" name="invoice_color_hex" placeholder="#2563eb" />
+        <!-- ============ สีเอกสาร ============ -->
+        <div class="card" *ngIf="activeTab === 'colors'">
+          <h3>สีเอกสาร</h3>
+          <p class="settings-panel-hint">ใช้แยกประเภทเอกสารในหน้าตัวอย่างและไฟล์ PDF</p>
+
+          <div class="color-field-row">
+            <span class="swatch" [style.background]="form.quotation_color"></span>
+            <span style="flex: 1; font-size: 14px">ใบเสนอราคา</span>
+            <div class="color-input-group">
+              <input type="color" [(ngModel)]="form.quotation_color" name="quotation_color" />
+              <input type="text" [(ngModel)]="form.quotation_color" name="quotation_color_hex" [ngModelOptions]="{ standalone: true }" />
+            </div>
           </div>
-        </label>
-      </div>
-
-      <div class="color-field-row">
-        <span class="swatch" [style.background]="form.receipt_color"></span>
-        <label style="flex:1">
-          ใบเสร็จรับเงิน
-          <div class="color-input-group">
-            <input type="color" [(ngModel)]="form.receipt_color" name="receipt_color" />
-            <input type="text" [(ngModel)]="form.receipt_color" name="receipt_color_hex" placeholder="#7c3aed" />
+          <div class="color-field-row">
+            <span class="swatch" [style.background]="form.invoice_color"></span>
+            <span style="flex: 1; font-size: 14px">ใบแจ้งหนี้</span>
+            <div class="color-input-group">
+              <input type="color" [(ngModel)]="form.invoice_color" name="invoice_color" />
+              <input type="text" [(ngModel)]="form.invoice_color" name="invoice_color_hex" [ngModelOptions]="{ standalone: true }" />
+            </div>
           </div>
-        </label>
+          <div class="color-field-row">
+            <span class="swatch" [style.background]="form.receipt_color"></span>
+            <span style="flex: 1; font-size: 14px">ใบเสร็จรับเงิน</span>
+            <div class="color-input-group">
+              <input type="color" [(ngModel)]="form.receipt_color" name="receipt_color" />
+              <input type="text" [(ngModel)]="form.receipt_color" name="receipt_color_hex" [ngModelOptions]="{ standalone: true }" />
+            </div>
+          </div>
+
+          <button type="button" class="btn-plain" (click)="resetColors()">คืนค่าสีเริ่มต้น</button>
+        </div>
+
+        <!-- ============ ความปลอดภัย ============ -->
+        <div class="card" *ngIf="activeTab === 'security'">
+          <h3>ความปลอดภัย</h3>
+          <p class="settings-panel-hint">รหัส PIN สำหรับเข้าแอป ใช้ร่วมกันทุกคนในบริษัท</p>
+
+          <p class="pin-status" [class.pin-status-off]="!form.has_access_pin">
+            {{ form.has_access_pin ? 'ตั้งรหัส PIN ไว้แล้ว' : 'ยังไม่ได้ตั้งรหัส PIN' }}
+            <span *ngIf="form.has_access_pin && form.access_pin_updated_at"> · อัปเดตล่าสุด {{ formatThaiDate(form.access_pin_updated_at) }}</span>
+          </p>
+
+          <div class="grid">
+            <label class="block" style="grid-column: 1 / -1">
+              รหัส PIN เดิม
+              <input type="password" [(ngModel)]="currentPinInput" name="currentPinInput" placeholder="กรอกรหัส PIN ปัจจุบัน" />
+            </label>
+            <label>
+              รหัส PIN ใหม่
+              <input type="password" [(ngModel)]="newPinInput" name="newPinInput" placeholder="เว้นว่างถ้าไม่เปลี่ยน" />
+            </label>
+            <label>
+              ยืนยันรหัส PIN ใหม่
+              <input type="password" [(ngModel)]="confirmPinInput" name="confirmPinInput" placeholder="พิมพ์อีกครั้ง" />
+            </label>
+          </div>
+          <p class="field-error" *ngIf="pinError">{{ pinError }}</p>
+          <p class="settings-panel-hint" style="margin-top: 12px">บันทึกแล้วทุกเครื่องต้องกรอก PIN ใหม่เพื่อเข้าใช้งาน</p>
+        </div>
+
+        <!-- ============ ข้อมูลสำรอง ============ -->
+        <div class="card" *ngIf="activeTab === 'backup'">
+          <h3>ข้อมูลสำรอง</h3>
+          <p class="settings-panel-hint">ดาวน์โหลดลูกค้า สินค้า และเอกสารทั้งหมดเก็บไว้ นำกลับมากู้คืนได้ทีหลัง</p>
+
+          <div class="backup-row">
+            <div class="backup-row-info">
+              <div class="backup-row-title">ดาวน์โหลดข้อมูลสำรอง</div>
+              <div class="backup-row-sub">
+                ไฟล์ JSON ไฟล์เดียว
+                <span *ngIf="form.last_backup_at"> · สำรองล่าสุด {{ formatThaiDate(form.last_backup_at) }}</span>
+              </div>
+            </div>
+            <a class="btn-secondary" [href]="api.exportBackupUrl()">ดาวน์โหลด</a>
+          </div>
+
+          <div class="backup-row">
+            <div class="backup-row-info">
+              <div class="backup-row-title">กู้คืนจากไฟล์สำรอง</div>
+              <div class="backup-row-sub">แทนที่ข้อมูลปัจจุบันทั้งหมด · ไม่กระทบรหัส PIN</div>
+            </div>
+            <label class="btn-ghost">
+              เลือกไฟล์
+              <input type="file" accept=".json" (change)="onRestoreFileSelected($event)" hidden />
+            </label>
+          </div>
+
+          <p class="field-error" *ngIf="restoreError">{{ restoreError }}</p>
+          <p class="save-success" *ngIf="restoreSuccess">{{ restoreSuccess }}</p>
+          <p class="settings-panel-hint" *ngIf="restoring">กำลังกู้คืนข้อมูล...</p>
+        </div>
+
+        <!-- ============ โซนอันตราย ============ -->
+        <div class="card danger-card" *ngIf="activeTab === 'danger'">
+          <div class="danger-card-header">
+            <div class="danger-card-title">โซนอันตราย</div>
+            <div class="danger-card-sub">ลบเอกสารออกจากระบบ ไม่กระทบลูกค้าและสินค้า</div>
+          </div>
+          <div class="danger-card-body">
+            <div class="danger-unlock-row">
+              <span class="danger-unlock-box" [class.checked]="dangerUnlocked" (click)="toggleDangerUnlock()">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" *ngIf="dangerUnlocked">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </span>
+              <span style="font-size: 13.5px; color: var(--color-text-soft)">ฉันดาวน์โหลดข้อมูลสำรองไว้แล้ว และเข้าใจว่าการลบย้อนกลับไม่ได้</span>
+            </div>
+
+            <div class="settings-panel-hint" style="font-weight: 500; color: var(--color-text-soft); margin-bottom: 8px">ลบตามช่วงวันที่ออกเอกสาร</div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 18px">
+              <input type="date" [(ngModel)]="deleteFromDate" name="deleteFromDate" [ngModelOptions]="{ standalone: true }" style="width: auto" />
+              <span style="font-size: 12.5px; color: var(--color-text-muted)">ถึง</span>
+              <input type="date" [(ngModel)]="deleteToDate" name="deleteToDate" [ngModelOptions]="{ standalone: true }" style="width: auto" />
+              <button type="button" class="btn-danger-outline" [disabled]="!dangerUnlocked || deletingDocs" (click)="requestDeleteByRange()">ลบเอกสารในช่วงนี้</button>
+            </div>
+
+            <div style="padding-top: 16px; border-top: 1px solid var(--color-border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
+              <button type="button" class="btn-danger-solid" [disabled]="!dangerUnlocked || deletingDocs" (click)="requestDeleteAllDocuments()">ลบเอกสารทั้งหมด</button>
+              <span class="settings-panel-hint">รีเซ็ตเลขที่เอกสารให้เริ่มนับ 0001 ใหม่ — ลบตามช่วงวันที่จะไม่รีเซ็ตเลข</span>
+            </div>
+
+            <p class="field-error" *ngIf="deleteDocsError">{{ deleteDocsError }}</p>
+            <p class="save-success" *ngIf="deleteDocsSuccess">{{ deleteDocsSuccess }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card settings-preview" *ngIf="showPreview">
+        <h3 style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; color: var(--color-text-muted); text-transform: uppercase">ตัวอย่างบนหัวเอกสาร</h3>
+        <div style="font-size: 15px; font-weight: 600; line-height: 1.5">{{ form.name || 'ชื่อบริษัทของคุณ' }}</div>
+        <div style="font-size: 11.5px; color: var(--color-text-soft); line-height: 1.75; margin-top: 6px; white-space: pre-line">{{ form.address }}</div>
+        <div style="font-size: 11.5px; color: var(--color-text-soft); line-height: 1.75" *ngIf="form.tax_id">เลขผู้เสียภาษี: {{ form.tax_id }}</div>
+        <div style="font-size: 11.5px; color: var(--color-text-soft); line-height: 1.75">{{ [form.phone, form.email].join(' · ') }}</div>
+
+        <div class="doc-color-preview-list">
+          <div class="doc-color-preview-item" [style.border-left-color]="form.quotation_color">
+            <span class="dot" [style.background]="form.quotation_color"></span>
+            ใบเสนอราคา
+          </div>
+          <div class="doc-color-preview-item" [style.border-left-color]="form.invoice_color">
+            <span class="dot" [style.background]="form.invoice_color"></span>
+            ใบแจ้งหนี้
+          </div>
+          <div class="doc-color-preview-item" [style.border-left-color]="form.receipt_color">
+            <span class="dot" [style.background]="form.receipt_color"></span>
+            ใบเสร็จรับเงิน
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h3>ความปลอดภัย</h3>
-      <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">รหัส PIN สำหรับกันคนนอกเข้าแอปนี้ (ทุกคนในบริษัทใช้ร่วมกัน) — ใช้แทนการตั้งค่าที่ Render ก็ได้</p>
-
-      <p class="pin-status" [class.pin-status-off]="!form.has_access_pin">
-        <ng-container *ngIf="form.has_access_pin">ตั้งรหัส PIN ไว้แล้ว</ng-container>
-        <ng-container *ngIf="!form.has_access_pin">ยังไม่ได้ตั้งรหัส PIN — ใครก็เข้าแอปนี้ได้ทันทีถ้ารู้ลิงก์</ng-container>
-      </p>
-
-      <label class="pin-field" *ngIf="form.has_access_pin">
-        รหัส PIN เดิม
-        <input type="password" inputmode="numeric" autocomplete="off" [(ngModel)]="currentPinInput" name="current_pin" placeholder="กรอกรหัส PIN ปัจจุบัน" />
-      </label>
-      <label class="pin-field">
-        {{ form.has_access_pin ? 'รหัส PIN ใหม่' : 'ตั้งรหัส PIN' }}
-        <input type="password" inputmode="numeric" autocomplete="off" [(ngModel)]="newPinInput" name="new_pin" placeholder="เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน" />
-      </label>
-      <label class="pin-field">
-        ยืนยันรหัส PIN ใหม่
-        <input type="password" inputmode="numeric" autocomplete="off" [(ngModel)]="confirmPinInput" name="confirm_pin" placeholder="พิมพ์รหัส PIN ใหม่อีกครั้ง" />
-      </label>
-      <p style="font-size:11.5px;color:var(--color-text-muted);margin:6px 0 0">บันทึกแล้วจะต้องกรอก PIN ใหม่นี้เพื่อเข้าใช้งานอีกครั้งในทุกเครื่อง</p>
-      <p class="error" *ngIf="pinError">{{ pinError }}</p>
-
-      <p class="error" *ngIf="error">{{ error }}</p>
-      <p class="save-success" *ngIf="saved">บันทึกข้อมูลบริษัทเรียบร้อยแล้ว</p>
-
-      <button type="submit" [disabled]="saving">{{ saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}</button>
-    </div>
-
-    <div class="card">
-      <h3>ข้อมูลสำรอง</h3>
-      <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">
-        ดาวน์โหลดข้อมูลทั้งหมด (ลูกค้า สินค้า เอกสาร) เก็บไว้สำรอง เผื่อกรณีเข้า Supabase ไม่ได้ (เช่น เกินโควตาฟรี)
-        แล้วนำไฟล์นี้มากู้คืนได้ทีหลัง เพื่อให้ข้อมูลไม่หาย
-      </p>
-
-      <a class="btn-secondary" [href]="api.exportBackupUrl()">ดาวน์โหลดข้อมูลสำรอง</a>
-
-      <label class="btn-secondary" style="margin-top:10px;margin-left:10px">
-        กู้คืนข้อมูลจากไฟล์สำรอง
-        <input type="file" accept=".json" (change)="onRestoreFileSelected($event)" hidden />
-      </label>
-      <p style="font-size:11.5px;color:var(--color-text-muted);margin:6px 0 0">
-        การกู้คืนจะแทนที่ข้อมูลปัจจุบันทั้งหมดด้วยข้อมูลในไฟล์ — ไม่กระทบรหัส PIN ที่ตั้งไว้
-      </p>
-
-      <p *ngIf="restoring" style="font-size:12px;color:var(--color-text-muted);margin:8px 0 0">กำลังกู้คืนข้อมูล...</p>
-      <p class="error" *ngIf="restoreError">{{ restoreError }}</p>
-      <p class="save-success" *ngIf="restoreSuccess">{{ restoreSuccess }}</p>
-    </div>
-
-    <div class="card">
-      <h3>โซนอันตราย</h3>
-      <p style="font-size:12px;color:var(--color-text-muted);margin:-8px 0 14px">
-        ลบเอกสาร (ใบเสนอราคา/ใบแจ้งหนี้/ใบเสร็จ) ออกจากระบบ — ไม่กระทบข้อมูลลูกค้าและสินค้า
-        แนะนำให้ดาวน์โหลดข้อมูลสำรองไว้ก่อนถ้ายังไม่มั่นใจ
-      </p>
-
-      <label style="margin-bottom:12px">
-        ลบตามช่วงวันที่ออกเอกสาร
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="date" [(ngModel)]="deleteFromDate" name="delete_from" style="width:auto" />
-          <span style="font-size:12px;color:var(--color-text-muted)">ถึง</span>
-          <input type="date" [(ngModel)]="deleteToDate" name="delete_to" style="width:auto" />
-          <button type="button" class="btn-secondary" [disabled]="deletingDocs" (click)="requestDeleteByRange()">ลบเอกสารในช่วงนี้</button>
-        </div>
-      </label>
-
-      <button type="button" class="btn-danger-solid" [disabled]="deletingDocs" (click)="requestDeleteAllDocuments()">
-        {{ deletingDocs ? 'กำลังลบ...' : 'ลบเอกสารทั้งหมด' }}
-      </button>
-      <p style="font-size:11.5px;color:var(--color-text-muted);margin:6px 0 0">
-        ลบทั้งหมดจะรีเซ็ตเลขที่เอกสารให้เริ่มนับ 0001 ใหม่ด้วย — ถ้าเลือกลบตามช่วงวันที่หรือเลือกทีละรายการ (ในหน้าเอกสาร) จะไม่รีเซ็ตเลข
-      </p>
-
-      <p class="error" *ngIf="deleteDocsError">{{ deleteDocsError }}</p>
-      <p class="save-success" *ngIf="deleteDocsSuccess">{{ deleteDocsSuccess }}</p>
-    </div>
-    </div>
-
-    <div class="card settings-preview">
-      <h3>ตัวอย่างบนหัวเอกสาร</h3>
-      <div class="doc-preview-company">{{ form.name || 'ชื่อบริษัทของคุณ' }}</div>
-      <div class="doc-preview-company-meta">
-        <div *ngIf="form.address">{{ form.address }}</div>
-        <div *ngIf="form.tax_id">เลขผู้เสียภาษี: {{ form.tax_id }}</div>
-        <div *ngIf="form.phone || form.email">
-          {{ form.phone }}<span *ngIf="form.phone && form.email"> · </span>{{ form.email }}
-        </div>
-      </div>
-      <img *ngIf="form.logo_path" [src]="form.logo_path" alt="โลโก้บริษัท" class="settings-logo-preview" />
-
-      <div class="doc-color-preview-list">
-        <div class="doc-color-preview-item" [style.borderColor]="form.quotation_color">
-          <span class="dot" [style.background]="form.quotation_color"></span>ใบเสนอราคา
-        </div>
-        <div class="doc-color-preview-item" [style.borderColor]="form.invoice_color">
-          <span class="dot" [style.background]="form.invoice_color"></span>ใบแจ้งหนี้
-        </div>
-        <div class="doc-color-preview-item" [style.borderColor]="form.receipt_color">
-          <span class="dot" [style.background]="form.receipt_color"></span>ใบเสร็จรับเงิน
-        </div>
+    <div class="settings-savebar">
+      <span class="settings-savebar-label">{{ dirtyLabel }}</span>
+      <p class="field-error" *ngIf="error" style="margin: 0 0 0 14px">{{ error }}</p>
+      <div class="settings-savebar-actions">
+        <button type="button" class="btn-ghost" [disabled]="!isDirty" (click)="discard()">ยกเลิกการแก้ไข</button>
+        <button type="submit" [disabled]="saving || !isDirty">{{ saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}</button>
       </div>
     </div>
   </div>
@@ -188,15 +223,19 @@
 <div class="modal-overlay" *ngIf="confirm" (click)="cancelConfirm()">
   <div class="modal-card confirm-card" (click)="$event.stopPropagation()">
     <p class="confirm-message">{{ confirm.message }}</p>
-    <label *ngIf="confirm.confirmPhrase" style="margin:10px 0">
+    <label *ngIf="confirm.confirmPhrase" class="block">
       พิมพ์ "{{ confirm.confirmPhrase }}" เพื่อยืนยัน
-      <input type="text" [(ngModel)]="confirmTypedInput" name="confirm_typed" autocomplete="off" />
+      <input type="text" [(ngModel)]="confirmTypedInput" name="confirmTypedInput" [ngModelOptions]="{ standalone: true }" />
     </label>
     <div class="modal-actions">
-      <button type="button" class="btn-ghost" (click)="cancelConfirm()">ยกเลิก</button>
-      <button type="button" [class.btn-danger-solid]="confirm.danger"
+      <button class="btn-ghost" (click)="cancelConfirm()">ยกเลิก</button>
+      <button
+        [class.btn-danger-solid]="confirm.danger"
         [disabled]="confirm.confirmPhrase ? confirmTypedInput !== confirm.confirmPhrase : false"
-        (click)="confirm.onConfirm()">{{ confirm.confirmLabel }}</button>
+        (click)="confirm.onConfirm()"
+      >
+        {{ confirm.confirmLabel }}
+      </button>
     </div>
   </div>
 </div>

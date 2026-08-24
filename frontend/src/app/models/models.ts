@@ -15,6 +15,10 @@ export interface Company {
   current_pin?: string;
   /** อ่านอย่างเดียว: ตั้ง PIN ไว้แล้วหรือยัง (ไม่บอกค่าจริง) */
   has_access_pin?: boolean;
+  /** อ่านอย่างเดียว: เวลาที่แก้ไข/ตั้ง PIN ล่าสุด */
+  access_pin_updated_at?: string;
+  /** อ่านอย่างเดียว: เวลาที่ดาวน์โหลด/ส่งข้อมูลสำรองล่าสุด (ทั้งกดเองและ cron อัตโนมัติ) */
+  last_backup_at?: string;
 }
 
 export interface Customer {
