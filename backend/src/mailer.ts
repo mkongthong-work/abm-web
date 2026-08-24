@@ -40,7 +40,10 @@ export async function sendBackupEmail(attachmentBuffer: Buffer, filename: string
         "อีเมลนี้ส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ",
       attachment: [
         {
-          name: filename,
+          // Brevo จำกัดนามสกุลไฟล์แนบที่รับได้ (whitelist) และ .json ไม่อยู่ในนั้น (ตอบ 400 "Unsupported file format")
+          // เปลี่ยนเป็น .txt แทนเฉพาะตอนส่งอีเมล — เนื้อไฟล์ยังเป็น JSON เหมือนเดิม ไม่กระทบตอนกู้คืนข้อมูล
+          // (หน้ากู้คืนข้อมูลอ่านเนื้อไฟล์เป็น JSON โดยตรง ไม่ได้เช็คนามสกุลไฟล์)
+          name: filename.replace(/\.json$/i, ".txt"),
           content: attachmentBuffer.toString("base64"),
         },
       ],
