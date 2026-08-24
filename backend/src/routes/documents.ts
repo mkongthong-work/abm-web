@@ -78,6 +78,7 @@ router.post("/preview", async (req, res) => {
     sign_right_label,
     show_quantity,
     show_unit,
+    show_price,
     combined_receipt,
     theme,
   } = req.body;
@@ -111,6 +112,7 @@ router.post("/preview", async (req, res) => {
     sign_right_label: sign_right_label !== undefined ? sign_right_label : DEFAULT_SIGN_RIGHT,
     show_quantity: show_quantity !== undefined ? !!show_quantity : true,
     show_unit: show_unit !== undefined ? !!show_unit : true,
+    show_price: show_price !== undefined ? !!show_price : true,
     combined_receipt: !!combined_receipt,
     theme: VALID_THEMES.includes(theme) ? theme : "modern",
   };
@@ -272,6 +274,7 @@ router.post("/", async (req, res) => {
     sign_right_label,
     show_quantity,
     show_unit,
+    show_price,
     combined_receipt,
     theme,
   } = req.body;
@@ -290,6 +293,7 @@ router.post("/", async (req, res) => {
   const finalSignRight = sign_right_label !== undefined ? sign_right_label : DEFAULT_SIGN_RIGHT;
   const finalShowQuantity = show_quantity !== undefined ? !!show_quantity : true;
   const finalShowUnit = show_unit !== undefined ? !!show_unit : true;
+  const finalShowPrice = show_price !== undefined ? !!show_price : true;
   const finalCombinedReceipt = !!combined_receipt;
   const finalTheme = VALID_THEMES.includes(theme) ? theme : "modern";
   const finalIssueDate = issue_date || new Date().toISOString().slice(0, 10);
@@ -307,8 +311,8 @@ router.post("/", async (req, res) => {
     doc = await one<any>(
       `INSERT INTO documents (doc_type, doc_number, customer_id, issue_date, due_date,
                                ref_doc_id, vat_rate, discount, note, status,
-                               sign_left_label, sign_right_label, show_quantity, show_unit, combined_receipt, theme)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                               sign_left_label, sign_right_label, show_quantity, show_unit, show_price, combined_receipt, theme)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING *`,
       [
         type,
@@ -325,6 +329,7 @@ router.post("/", async (req, res) => {
         finalSignRight,
         finalShowQuantity,
         finalShowUnit,
+        finalShowPrice,
         finalCombinedReceipt,
         finalTheme,
       ]
@@ -377,6 +382,7 @@ router.put("/:id", async (req, res) => {
     sign_right_label,
     show_quantity,
     show_unit,
+    show_price,
     combined_receipt,
     theme,
   } = req.body;
@@ -428,9 +434,10 @@ router.put("/:id", async (req, res) => {
        sign_right_label = COALESCE($11, sign_right_label),
        show_quantity = COALESCE($12, show_quantity),
        show_unit = COALESCE($13, show_unit),
-       combined_receipt = COALESCE($14, combined_receipt),
-       theme = COALESCE($15, theme)
-     WHERE id = $16`,
+       show_price = COALESCE($14, show_price),
+       combined_receipt = COALESCE($15, combined_receipt),
+       theme = COALESCE($16, theme)
+     WHERE id = $17`,
     [
       newDocType,
       newDocNumber,
@@ -445,6 +452,7 @@ router.put("/:id", async (req, res) => {
       sign_right_label ?? null,
       show_quantity ?? null,
       show_unit ?? null,
+      show_price ?? null,
       combined_receipt !== undefined ? !!combined_receipt : null,
       theme ?? null,
       id,

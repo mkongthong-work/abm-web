@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS documents (
     sign_right_label TEXT NOT NULL DEFAULT 'ผู้รับเอกสาร',
     show_quantity   BOOLEAN NOT NULL DEFAULT TRUE,
     show_unit       BOOLEAN NOT NULL DEFAULT TRUE,
+    show_price      BOOLEAN NOT NULL DEFAULT TRUE,
     combined_receipt BOOLEAN NOT NULL DEFAULT FALSE,
     theme           TEXT NOT NULL DEFAULT 'modern' CHECK (theme IN ('modern', 'minimal')),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -72,6 +73,8 @@ ALTER TABLE documents ADD COLUMN IF NOT EXISTS sign_left_label  TEXT NOT NULL DE
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS sign_right_label TEXT NOT NULL DEFAULT 'ผู้รับเอกสาร';
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_quantity BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_unit     BOOLEAN NOT NULL DEFAULT TRUE;
+-- toggle: ซ่อนคอลัมน์ "ราคา/หน่วย" และ "จำนวนเงิน" พร้อมกันได้ (เช่น ใบส่งของที่ไม่ต้องการโชว์ราคา) ค่าเริ่มต้น: แสดง
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS show_price    BOOLEAN NOT NULL DEFAULT TRUE;
 -- toggle: เอกสารประเภทใบแจ้งหนี้ (invoice) แสดงหัวเอกสารเป็น "ใบแจ้งหนี้ / ใบเสร็จรับเงิน" ได้ด้วย (ค่าเริ่มต้น: ปิด)
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS combined_receipt BOOLEAN NOT NULL DEFAULT FALSE;
 -- ธีมเอกสาร: 'modern' (มีสีตามประเภทเอกสาร ค่าเริ่มต้น) หรือ 'minimal' (ขาวดำ ไม่มีสี) เลือกได้ต่อเอกสาร

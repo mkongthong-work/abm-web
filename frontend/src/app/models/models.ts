@@ -70,6 +70,7 @@ export interface CreateDocumentPayload {
   sign_right_label?: string;
   show_quantity?: boolean;
   show_unit?: boolean;
+  show_price?: boolean;
   combined_receipt?: boolean;
   theme?: DocTheme;
   /** ระบุเองได้เฉพาะตอนสร้างเอกสารใหม่ — ใช้กรณีแทรกเลขที่เอกสารย้อนหลัง (เช่น "QT-2026-08-0001-1") ไม่ระบุ = ให้ระบบออกเลขอัตโนมัติ */
@@ -99,6 +100,7 @@ export interface UpdateDocumentPayload {
   sign_right_label?: string;
   show_quantity?: boolean;
   show_unit?: boolean;
+  show_price?: boolean;
   combined_receipt?: boolean;
   theme?: DocTheme;
 }
@@ -127,6 +129,7 @@ export interface DocumentDetail {
   sign_right_label?: string;
   show_quantity?: boolean;
   show_unit?: boolean;
+  show_price?: boolean;
   combined_receipt?: boolean;
   theme?: DocTheme;
   items: DocumentLine[];

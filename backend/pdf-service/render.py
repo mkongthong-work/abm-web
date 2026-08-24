@@ -376,15 +376,7 @@ TEMPLATE = """
       </tbody>
     </table>
 
-    <div class="totals">
-      <table>
-        <tr><td class="label">รวมเป็นเงิน</td><td class="value">{subtotal} บาท</td></tr>
-        {discount_row}
-        {vat_row}
-        <tr class="grand"><td class="label">ยอดรวมสุทธิ</td><td class="value">{total} บาท</td></tr>
-      </table>
-      <div class="baht-text">({baht_text})</div>
-    </div>
+    {totals_block}
 
     {note_block}
   </div>
@@ -408,19 +400,22 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
     if is_minimal:
         accent = "#1a1a1a"
 
-    # ซ่อนคอลัมน์ "จำนวน" / "หน่วย" ในตารางได้ตาม toggle ที่ตั้งไว้ตอนกรอกฟอร์ม (ค่าเริ่มต้น: แสดงทั้งคู่)
+    # ซ่อนคอลัมน์ "จำนวน" / "หน่วย" / "ราคา/หน่วย"+"จำนวนเงิน" ในตารางได้ตาม toggle ที่ตั้งไว้ตอนกรอกฟอร์ม (ค่าเริ่มต้น: แสดงทั้งหมด)
     show_qty = doc.get("show_quantity")
     show_qty = True if show_qty is None else bool(show_qty)
     show_unit_col = doc.get("show_unit")
     show_unit_col = True if show_unit_col is None else bool(show_unit_col)
+    show_price_col = doc.get("show_price")
+    show_price_col = True if show_price_col is None else bool(show_price_col)
 
     thead_cells = ['<th style="width:36px;">ลำดับ</th>', "<th>รายการ</th>"]
     if show_qty:
         thead_cells.append('<th class="num" style="width:60px;">จำนวน</th>')
     if show_unit_col:
         thead_cells.append('<th style="width:60px;">หน่วย</th>')
-    thead_cells.append('<th class="num" style="width:90px;">ราคา/หน่วย</th>')
-    thead_cells.append('<th class="num" style="width:100px;">จำนวนเงิน</th>')
+    if show_price_col:
+        thead_cells.append('<th class="num" style="width:90px;">ราคา/หน่วย</th>')
+        thead_cells.append('<th class="num" style="width:100px;">จำนวนเงิน</th>')
     items_thead = "".join(thead_cells)
 
     item_rows = []
@@ -437,8 +432,9 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
             cells.append(f'<td class="num">{it["quantity"]:,.2f}</td>')
         if show_unit_col:
             cells.append(f"<td>{esc(it['unit'])}</td>")
-        cells.append(f'<td class="num">{money(it["unit_price"])}</td>')
-        cells.append(f'<td class="num">{money(amount)}</td>')
+        if show_price_col:
+            cells.append(f'<td class="num">{money(it["unit_price"])}</td>')
+            cells.append(f'<td class="num">{money(amount)}</td>')
         item_rows.append(f"<tr>{''.join(cells)}</tr>")
 
     due_date_row = ""
@@ -479,6 +475,19 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
             f'<td class="value">{money(vat)} บาท</td></tr>'
         )
 
+    # ซ่อนกล่องสรุปยอดทั้งหมด (รวมเป็นเงิน/ส่วนลด/VAT/ยอดสุทธิ/ตัวหนังสือไทย) เมื่อปิด toggle "ราคา/หน่วย" ไว้
+    # เพราะไม่มีราคาให้สรุปยอดแล้ว (เช่น ใช้ทำใบส่งของที่ไม่ต้องการโชว์ราคา)
+    totals_block = ""
+    if show_price_col:
+        totals_block = (
+            '<div class="totals"><table>'
+            f'<tr><td class="label">รวมเป็นเงิน</td><td class="value">{money(subtotal)} บาท</td></tr>'
+            f"{discount_row}{vat_row}"
+            f'<tr class="grand"><td class="label">ยอดรวมสุทธิ</td><td class="value">{money(total)} บาท</td></tr>'
+            "</table>"
+            f'<div class="baht-text">({thai_baht_text(total)})</div></div>'
+        )
+
     html_str = TEMPLATE.format(
         css=build_css(accent, minimal=is_minimal),
         company_name=esc(company["name"]),
@@ -498,11 +507,7 @@ def render_document_pdf(doc, customer, company, items, subtotal, discount, vat, 
         due_date_row=due_date_row,
         items_thead=items_thead,
         item_rows="".join(item_rows),
-        subtotal=money(subtotal),
-        discount_row=discount_row,
-        vat_row=vat_row,
-        total=money(total),
-        baht_text=thai_baht_text(total),
+        totals_block=totals_block,
         note_block=note_block,
         signatures_block=signatures_block,
     )

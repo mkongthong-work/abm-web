@@ -94,6 +94,7 @@ export class DocumentFormComponent implements OnInit {
   signRightEnabled = true;
   showUnit = false;
   showQuantity = false;
+  showPrice = true;
   combinedReceipt = false;
   theme: DocTheme = 'modern';
 
@@ -249,6 +250,7 @@ export class DocumentFormComponent implements OnInit {
           doc.show_unit !== undefined && doc.show_unit !== null
             ? doc.show_unit
             : this.lines.some((l) => l.unit && l.unit !== 'ชิ้น');
+        this.showPrice = doc.show_price !== undefined && doc.show_price !== null ? doc.show_price : true;
         this.combinedReceipt = !!doc.combined_receipt;
         this.theme = doc.theme === 'minimal' ? 'minimal' : 'modern';
         this.loadingDoc = false;
@@ -486,6 +488,7 @@ export class DocumentFormComponent implements OnInit {
       sign_right_label: this.signRightEnabled ? this.signRightLabel : '',
       show_quantity: this.showQuantity,
       show_unit: this.showUnit,
+      show_price: this.showPrice,
       combined_receipt: this.type === 'invoice' ? this.combinedReceipt : false,
       theme: this.theme,
       // แทรกเลขที่เอกสารเอง (เช่น "QT-2026-08-0001-1") เฉพาะตอนสร้างใหม่และเปิดโหมดแก้เลขเองไว้ — ไม่ระบุ = ให้ระบบออกเลขอัตโนมัติ
@@ -532,6 +535,7 @@ export class DocumentFormComponent implements OnInit {
           sign_right_label: payload.sign_right_label,
           show_quantity: payload.show_quantity,
           show_unit: payload.show_unit,
+          show_price: payload.show_price,
           combined_receipt: payload.combined_receipt,
           theme: payload.theme,
         })
