@@ -115,3 +115,14 @@ CREATE TABLE IF NOT EXISTS document_defaults (
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (company_id, doc_type)
 );
+
+-- ปิดช่องทาง Supabase REST API สาธารณะ (PostgREST) ที่เปิดให้ทุกตารางใน schema public โดยอัตโนมัติ
+-- ถ้าไม่เปิด RLS ใครก็ตามที่มี URL โปรเจกต์ + anon key จะอ่าน/แก้/ลบข้อมูลผ่าน API นั้นได้ตรง ๆ โดยไม่ผ่านแอปนี้เลย
+-- (แอปนี้เชื่อมฐานข้อมูลตรงผ่าน DATABASE_URL ด้วย role ที่มีสิทธิ์ BYPASSRLS อยู่แล้ว จึงไม่กระทบการทำงานของแอป
+--  ไม่ต้องสร้าง policy เพิ่ม เปิด RLS เฉย ๆ โดยไม่มี policy = ปิดกั้นทุกคนที่ผ่าน REST API ซึ่งคือสิ่งที่ต้องการ)
+ALTER TABLE company ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document_defaults ENABLE ROW LEVEL SECURITY;
