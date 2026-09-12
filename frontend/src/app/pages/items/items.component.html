@@ -29,11 +29,50 @@
         <td style="font-weight:600">{{ i.name }}</td>
         <td>{{ i.unit }}</td>
         <td class="num">{{ i.unit_price | number:'1.2-2' }}</td>
-        <td><button class="link" (click)="remove(i.id)">ลบ</button></td>
+        <td style="display:flex;gap:4px">
+          <button class="link link-primary" (click)="openEdit(i)">แก้ไข</button>
+          <button class="link" (click)="requestDelete(i)">ลบ</button>
+        </td>
       </tr>
       <tr *ngIf="items.length === 0">
         <td colspan="4" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีสินค้า/บริการ — เพิ่มรายการแรกด้านบน</td>
       </tr>
     </tbody>
   </table>
+</div>
+
+<!-- popup แก้ไขสินค้า/บริการ -->
+<div class="modal-overlay" *ngIf="editing" (click)="closeEdit()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>แก้ไขสินค้า/บริการ</h3>
+      <button type="button" class="modal-close" (click)="closeEdit()" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form (ngSubmit)="requestSaveEdit()">
+      <div class="grid">
+        <label>ชื่อสินค้า/บริการ *<input [(ngModel)]="editForm.name" name="edit_name" required /></label>
+        <label>รายละเอียด<input [(ngModel)]="editForm.description" name="edit_description" /></label>
+        <label>หน่วย<input [(ngModel)]="editForm.unit" name="edit_unit" /></label>
+        <label>ราคาต่อหน่วย *<input [(ngModel)]="editForm.unit_price" name="edit_unit_price" type="number" /></label>
+      </div>
+      <p class="error" *ngIf="editError">{{ editError }}</p>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" (click)="closeEdit()" [disabled]="saving">ยกเลิก</button>
+        <button type="submit" [disabled]="saving || !editForm.name || editForm.unit_price === undefined">{{ saving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- popup ยืนยัน (ใช้ร่วมกันทั้งบันทึกแก้ไขและลบ) -->
+<div class="modal-overlay" *ngIf="confirm" (click)="cancelConfirm()">
+  <div class="modal-card confirm-card" (click)="$event.stopPropagation()">
+    <p class="confirm-message">{{ confirm.message }}</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" (click)="cancelConfirm()">ยกเลิก</button>
+      <button type="button" [class.btn-danger-solid]="confirm.danger" (click)="confirm.onConfirm()">{{ confirm.confirmLabel }}</button>
+    </div>
+  </div>
 </div>

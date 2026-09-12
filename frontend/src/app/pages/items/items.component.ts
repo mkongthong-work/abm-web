@@ -16,6 +16,15 @@ export class ItemsComponent implements OnInit {
   loading = false;
   error = '';
 
+  // -- แก้ไข --
+  editing: Item | null = null;
+  editForm: Partial<Item> = {};
+  editError = '';
+  saving = false;
+
+  // -- ยืนยัน (ใช้ร่วมกันทั้งบันทึกแก้ไขและลบ) --
+  confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void } | null = null;
+
   constructor(private api: ApiService) {}
 
   ngOnInit() {
@@ -47,8 +56,72 @@ export class ItemsComponent implements OnInit {
     });
   }
 
-  remove(id: number) {
-    if (!confirm('ลบรายการนี้?')) return;
-    this.api.deleteItem(id).subscribe(() => this.load());
+  // -- แก้ไข --
+  openEdit(i: Item) {
+    this.editing = i;
+    this.editForm = { name: i.name, description: i.description, unit: i.unit, unit_price: i.unit_price };
+    this.editError = '';
+  }
+
+  closeEdit() {
+    if (this.saving) return;
+    this.editing = null;
+    this.editForm = {};
+    this.editError = '';
+  }
+
+  requestSaveEdit() {
+    if (!this.editForm.name || this.editForm.unit_price === undefined || !this.editing) return;
+    this.confirm = {
+      message: `ยืนยันบันทึกการแก้ไขรายการ "${this.editForm.name}"?`,
+      confirmLabel: 'บันทึกการแก้ไข',
+      danger: false,
+      onConfirm: () => this.saveEdit(),
+    };
+  }
+
+  private saveEdit() {
+    if (!this.editing) return;
+    this.saving = true;
+    this.api.updateItem(this.editing.id, this.editForm).subscribe({
+      next: () => {
+        this.saving = false;
+        this.confirm = null;
+        this.closeEdit();
+        this.load();
+      },
+      error: () => {
+        this.saving = false;
+        this.confirm = null;
+        this.editError = 'บันทึกการแก้ไขไม่สำเร็จ';
+      },
+    });
+  }
+
+  // -- ลบ --
+  requestDelete(i: Item) {
+    this.confirm = {
+      message: `ยืนยันลบรายการ "${i.name}"? การลบไม่สามารถย้อนกลับได้`,
+      confirmLabel: 'ลบรายการ',
+      danger: true,
+      onConfirm: () => this.deleteConfirmed(i.id),
+    };
+  }
+
+  private deleteConfirmed(id: number) {
+    this.api.deleteItem(id).subscribe({
+      next: () => {
+        this.confirm = null;
+        this.load();
+      },
+      error: () => {
+        this.confirm = null;
+        this.error = 'ลบรายการไม่สำเร็จ';
+      },
+    });
+  }
+
+  cancelConfirm() {
+    this.confirm = null;
   }
 }

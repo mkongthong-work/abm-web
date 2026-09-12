@@ -61,6 +61,9 @@ export class ApiService {
   addItem(payload: Partial<Item>): Observable<Item> {
     return this.http.post<Item>(`${this.base}/items`, payload);
   }
+  updateItem(id: number, payload: Partial<Item>): Observable<Item> {
+    return this.http.put<Item>(`${this.base}/items/${id}`, payload);
+  }
   deleteItem(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/items/${id}`);
   }
