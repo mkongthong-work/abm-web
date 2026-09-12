@@ -72,7 +72,7 @@ export class DocumentFormComponent implements OnInit {
   originalIssueDate = '';
   loadingDoc = false;
 
-  type: DocType = 'quotation';
+  type: DocType = 'invoice';
   customerId: number | null = null;
   vatRate = 7;
   discount = 0;
