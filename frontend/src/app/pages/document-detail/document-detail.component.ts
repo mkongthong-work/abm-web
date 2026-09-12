@@ -49,6 +49,7 @@ export class DocumentDetailComponent implements OnInit {
   company: Company | null = null;
   loading = true;
   error = '';
+  sharing = false;
 
   constructor(
     public api: ApiService,
@@ -129,5 +130,37 @@ export class DocumentDetailComponent implements OnInit {
 
   goBack() {
     this.router.navigate(['/documents']);
+  }
+
+  /** แชร์ไฟล์ PDF ของเอกสารนี้ไปแอปอื่น (LINE, อีเมล, ฯลฯ)
+   *  มือถือ (Android Chrome / iOS Safari 16.4+): ใช้ Web Share API เปิด share sheet ของเครื่อง มี LINE ให้เลือกถ้าติดตั้งไว้
+   *  เดสก์ท็อป/เบราว์เซอร์ที่ไม่รองรับแชร์ไฟล์: fallback ไปเปิดหน้าต่างแชร์ลิงก์ PDF ผ่าน LINE โดยตรง
+   *  (LINE เว็บไม่รองรับรับไฟล์ตรง ๆ จากเบราว์เซอร์ ต้องแชร์เป็นลิงก์ให้ปลายทางกดเปิด/ดาวน์โหลดเอง) */
+  async share() {
+    if (!this.doc) return;
+    const pdfUrl = this.api.downloadPdfUrl(this.doc.id);
+    const nav = navigator as any;
+
+    if (nav.share && nav.canShare) {
+      try {
+        this.sharing = true;
+        const res = await fetch(pdfUrl);
+        if (!res.ok) throw new Error('โหลดไฟล์ PDF ไม่สำเร็จ');
+        const blob = await res.blob();
+        const file = new File([blob], `${this.doc.doc_number}.pdf`, { type: 'application/pdf' });
+        if (nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file], title: this.doc.doc_number });
+          this.sharing = false;
+          return;
+        }
+      } catch (err: any) {
+        this.sharing = false;
+        // ผู้ใช้กดยกเลิกเอง (AbortError) ไม่ถือเป็น error ไม่ต้องแจ้งอะไร
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    this.sharing = false;
+    window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(pdfUrl)}`, '_blank');
   }
 }

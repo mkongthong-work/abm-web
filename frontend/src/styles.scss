@@ -923,7 +923,8 @@ button.btn-danger-outline:disabled { background: #fff; color: #c9a7a1; border-co
 .line-items-table td textarea {
   padding: 7px 8px;
   font-size: 13px;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   min-height: 34px;
   line-height: 1.4;
 }

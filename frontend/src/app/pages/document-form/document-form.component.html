@@ -224,6 +224,7 @@
                   <option *ngFor="let ci of catalogItems" [value]="ci.id">{{ ci.name }}</option>
                 </select>
                 <textarea
+                  appAutoGrow
                   [ngModel]="line.name"
                   (ngModelChange)="onNameInput(idx, $event)"
                   (keydown)="onNameKeydown($event, idx)"

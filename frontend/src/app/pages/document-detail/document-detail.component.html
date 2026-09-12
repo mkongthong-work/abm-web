@@ -6,12 +6,15 @@
     <button type="button" class="btn-ghost" (click)="goBack()">← กลับ</button>
     <a *ngIf="doc" [routerLink]="['/documents', doc.id, 'edit']" class="btn-secondary">แก้ไข</a>
     <a *ngIf="doc" [href]="api.downloadPdfUrl(doc.id)" target="_blank" class="btn-secondary">ดาวน์โหลด PDF</a>
+    <button type="button" *ngIf="doc" class="btn-secondary btn-icon" [disabled]="sharing" (click)="share()">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-3.9"/><path d="m8.6 13.5 6.8 3.9"/></svg>
+      {{ sharing ? 'กำลังเตรียมไฟล์...' : 'แชร์' }}
+    </button>
   </div>
 </div>
 
 <p *ngIf="loading">กำลังโหลด...</p>
 <p class="error" *ngIf="error">{{ error }}</p>
-
 <div *ngIf="doc && !loading">
   <div class="doc-void-notice" *ngIf="doc.status === 'void'">
     เอกสารนี้ถูก <strong>ยกเลิก</strong> ไว้

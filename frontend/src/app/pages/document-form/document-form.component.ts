@@ -14,10 +14,11 @@ import {
   DocNumberCheck,
 } from '../../models/models';
 import { thaiBahtText } from '../../utils/thai-baht-text';
+import { AutoGrowDirective } from '../../directives/auto-grow.directive';
 
 const TYPE_OPTIONS: { value: DocType; label: string }[] = [
-  { value: 'quotation', label: 'ใบเสนอราคา' },
   { value: 'invoice', label: 'ใบแจ้งหนี้' },
+  { value: 'quotation', label: 'ใบเสนอราคา' },
   { value: 'receipt', label: 'ใบเสร็จรับเงิน' },
 ];
 
@@ -51,7 +52,7 @@ const STATUS_BADGE: Record<string, string> = {
 @Component({
   selector: 'app-document-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AutoGrowDirective],
   templateUrl: './document-form.component.html',
 })
 export class DocumentFormComponent implements OnInit {
