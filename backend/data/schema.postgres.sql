@@ -25,6 +25,8 @@ ALTER TABLE company ADD COLUMN IF NOT EXISTS access_pin TEXT;
 -- เวลาที่แก้ไข/ตั้ง PIN ล่าสุด (โชว์ในหน้าตั้งค่า) และเวลาที่ดาวน์โหลด/ส่งข้อมูลสำรองล่าสุด (ทั้งกดเองและ cron อัตโนมัติ)
 ALTER TABLE company ADD COLUMN IF NOT EXISTS access_pin_updated_at TIMESTAMPTZ;
 ALTER TABLE company ADD COLUMN IF NOT EXISTS last_backup_at TIMESTAMPTZ;
+-- ธีมเอกสารเริ่มต้นตอนสร้างเอกสารใหม่: 'modern' (มีสีตามประเภทเอกสาร) หรือ 'minimal' (ขาวดำ) — ตั้งจากหน้าตั้งค่า > สีเอกสาร
+ALTER TABLE company ADD COLUMN IF NOT EXISTS default_theme TEXT NOT NULL DEFAULT 'modern' CHECK (default_theme IN ('modern', 'minimal'));
 
 -- ลูกค้า
 CREATE TABLE IF NOT EXISTS customers (

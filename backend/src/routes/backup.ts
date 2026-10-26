@@ -15,7 +15,7 @@ const BACKUP_VERSION = 1;
 async function buildBackupPayload() {
   const company = await one(
     `SELECT id, name, address, tax_id, phone, email, logo_path,
-            quotation_color, invoice_color, receipt_color
+            quotation_color, invoice_color, receipt_color, default_theme
      FROM company WHERE id = 1`
   );
   const customers = await many("SELECT * FROM customers ORDER BY id");
@@ -122,10 +122,11 @@ async function restoreReplace(payload: any) {
            name = $1, address = $2, tax_id = $3, phone = $4, email = $5, logo_path = $6,
            quotation_color = COALESCE($7, quotation_color),
            invoice_color = COALESCE($8, invoice_color),
-           receipt_color = COALESCE($9, receipt_color)
+           receipt_color = COALESCE($9, receipt_color),
+           default_theme = COALESCE($10, default_theme)
          WHERE id = 1`,
         [c.name, c.address ?? null, c.tax_id ?? null, c.phone ?? null, c.email ?? null, c.logo_path ?? null,
-          c.quotation_color ?? null, c.invoice_color ?? null, c.receipt_color ?? null]
+          c.quotation_color ?? null, c.invoice_color ?? null, c.receipt_color ?? null, c.default_theme ?? null]
       );
     }
 

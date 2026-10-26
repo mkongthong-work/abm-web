@@ -149,7 +149,11 @@ export class DocumentFormComponent implements OnInit {
     this.api.getCustomers().subscribe((c) => (this.customers = c));
     this.api.getItems().subscribe((i) => (this.catalogItems = i));
     this.api.getCompany().subscribe({
-      next: (c) => (this.company = c),
+      next: (c) => {
+        this.company = c;
+        // เอกสารใหม่: ใช้ธีมเริ่มต้นที่ตั้งไว้ในหน้าตั้งค่า (เอกสารเดิมที่เปิดมาแก้ไขใช้ธีมของมันเอง)
+        if (!this.isEdit && c.default_theme) this.theme = c.default_theme;
+      },
       error: () => (this.company = null),
     });
 

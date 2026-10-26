@@ -28,9 +28,14 @@ router.put("/", async (req, res) => {
     quotation_color,
     invoice_color,
     receipt_color,
+    default_theme,
     access_pin,
     current_pin,
   } = req.body;
+
+  if (default_theme !== undefined && default_theme !== "modern" && default_theme !== "minimal") {
+    return res.status(400).json({ error: "ธีมเอกสารเริ่มต้นไม่ถูกต้อง" });
+  }
 
   // เปลี่ยน/ตั้ง PIN: ถ้ามี PIN เดิมอยู่แล้ว ต้องยืนยันด้วย current_pin ที่ถูกต้องก่อนเสมอ
   // (ตั้งครั้งแรกที่ยังไม่เคยมี PIN เลย ไม่ต้องยืนยัน — ไม่มีอะไรให้ยืนยัน)
@@ -53,7 +58,8 @@ router.put("/", async (req, res) => {
        invoice_color = COALESCE($8, invoice_color),
        receipt_color = COALESCE($9, receipt_color),
        access_pin = COALESCE($10, access_pin),
-       access_pin_updated_at = CASE WHEN $10::text IS NOT NULL THEN NOW() ELSE access_pin_updated_at END
+       access_pin_updated_at = CASE WHEN $10::text IS NOT NULL THEN NOW() ELSE access_pin_updated_at END,
+       default_theme = COALESCE($11, default_theme)
      WHERE id = 1`,
     [
       name ?? null,
@@ -67,6 +73,7 @@ router.put("/", async (req, res) => {
       receipt_color ?? null,
       // ส่งมาเป็นค่าว่าง "" ถือว่าตั้งใจล้าง PIN (ปิดการล็อก) ส่งมาเป็น undefined/ไม่ส่งมาเลย = ไม่แก้ไข
       access_pin !== undefined ? access_pin : null,
+      default_theme ?? null,
     ]
   );
   if (access_pin !== undefined) invalidatePinCache();

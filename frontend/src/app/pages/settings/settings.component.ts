@@ -38,6 +38,7 @@ export class SettingsComponent implements OnInit {
     quotation_color: '#0d9488',
     invoice_color: '#2563eb',
     receipt_color: '#7c3aed',
+    default_theme: 'modern',
   };
   /** สแนปช็อตค่าที่โหลดมาล่าสุด (หรือบันทึกสำเร็จล่าสุด) — ใช้เทียบว่าแก้ไขอะไรไปบ้าง และไว้ "ยกเลิกการแก้ไข" กลับมาที่ค่านี้ */
   private original: Partial<Company> = { ...this.form };
@@ -87,7 +88,7 @@ export class SettingsComponent implements OnInit {
 
   // -- นับจำนวนฟิลด์ที่แก้ไปแล้วยังไม่บันทึก ต่อแท็บ (โชว์เป็น badge บนแท็บ + ข้อความในแถบบันทึก) --
   private readonly companyFields: (keyof Company)[] = ['name', 'address', 'tax_id', 'phone', 'email', 'logo_path'];
-  private readonly colorFields: (keyof Company)[] = ['quotation_color', 'invoice_color', 'receipt_color'];
+  private readonly colorFields: (keyof Company)[] = ['quotation_color', 'invoice_color', 'receipt_color', 'default_theme'];
 
   private fieldsChangedCount(keys: (keyof Company)[]): number {
     return keys.filter((k) => ((this.form as any)[k] ?? '') !== ((this.original as any)[k] ?? '')).length;

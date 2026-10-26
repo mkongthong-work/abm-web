@@ -9,6 +9,8 @@ export interface Company {
   quotation_color?: string;
   invoice_color?: string;
   receipt_color?: string;
+  /** ธีมเอกสารเริ่มต้นตอนสร้างเอกสารใหม่ (modern = มีสี / minimal = ขาวดำ) */
+  default_theme?: DocTheme;
   /** ส่งได้เฉพาะตอนบันทึก (ตั้ง/เปลี่ยน PIN ใหม่) — เซิร์ฟเวอร์จะไม่ส่งค่าจริงกลับมาให้ ดูสถานะจาก has_access_pin แทน */
   access_pin?: string;
   /** ต้องส่งคู่กับ access_pin เสมอตอนเปลี่ยน PIN (ยกเว้นตั้งครั้งแรกที่ยังไม่เคยมี PIN) — เซิร์ฟเวอร์ใช้ตรวจว่าเป็นเจ้าของ PIN เดิมจริง */

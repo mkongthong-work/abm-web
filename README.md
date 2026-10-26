@@ -23,26 +23,51 @@ abm-web/
 
 ## รันบนเครื่องตัวเอง (ครั้งแรก)
 
-### Backend
+สิ่งที่ต้องมีก่อน: Node.js 18+ (แนะนำ 22 ให้ตรงกับที่ deploy จริงบน Render), Python 3, และ Supabase
+project (ฟรี) สำหรับฐานข้อมูล
+
+### 1) Backend
+
 ต้องมี Supabase project และ connection string ก่อน — ดูวิธีสร้างละเอียดใน [`backend/SUPABASE_SETUP.md`](backend/SUPABASE_SETUP.md)
 
 ```bash
 cd backend
-cp .env.example .env        # แล้วใส่ DATABASE_URL จาก Supabase
+cp .env.example .env        # แล้วใส่ DATABASE_URL จาก Supabase (ค่าอื่นในไฟล์นี้ไม่ต้องตั้งตอน dev ในเครื่อง — ดูหมายเหตุด้านล่าง)
 npm install
 npm run build
-python3 -m pip install weasyprint   # ใช้ระบบ Python ที่มีอยู่ (มี weasyprint ให้ PDF ภาษาไทย)
-npm start                            # รันที่ http://localhost:3000
+npm start                    # รันที่ http://localhost:3000
 ```
-ตอนเริ่มรันครั้งแรก backend จะสร้างตารางทั้งหมดใน Supabase ให้อัตโนมัติจาก `data/schema.postgres.sql` ไม่ต้อง run SQL เอง
 
-### Frontend
+ตอนเริ่มรันครั้งแรก backend จะสร้างตารางทั้งหมดใน Supabase ให้อัตโนมัติจาก `data/schema.postgres.sql`
+ไม่ต้อง run SQL เอง (ระหว่างพัฒนาต่อ ใช้ `npm run dev` แทน `build`+`start` ได้ — auto-restart ทุกครั้งที่แก้โค้ด)
+
+**ติดตั้ง WeasyPrint (สำหรับ render PDF ภาษาไทย)** — แนะนำสร้าง virtualenv แยกไว้ที่ `backend/pdf-service/venv`
+เพราะโค้ด (`src/pdf.ts`) หา python จากที่นี่ให้อัตโนมัติ (กัน error "externally-managed-environment" ที่เจอบ่อย
+บน macOS/Homebrew Python ถ้า pip install ตรง ๆ เข้า Python ระบบ):
+
+```bash
+cd backend/pdf-service
+python3 -m venv venv
+source venv/bin/activate      # Windows (PowerShell): venv\Scripts\Activate.ps1
+pip install weasyprint
+deactivate
+```
+
+ไม่ต้องตั้งค่า PIN (`ABM_ACCESS_PIN`) ตอน dev ในเครื่อง — ถ้าไม่ตั้งไว้เลยทั้งใน `.env` และในหน้าตั้งค่าของแอป
+ระบบจะไม่บังคับล็อกอินใด ๆ เข้าใช้งานได้ทันที (ค่านี้จำเป็นเฉพาะตอน deploy ขึ้นจริงเท่านั้น)
+
+### 2) Frontend
+
 ```bash
 cd frontend
 npm install
-npm start                            # dev server ที่ http://localhost:4200 (proxy ไป backend ที่ 3000)
+npm start                    # dev server ที่ http://localhost:4200 เรียก backend ที่ localhost:3000 โดยตรง (ผ่าน CORS ไม่ใช่ proxy)
 ```
+
 ปรับ URL ของ backend ได้ที่ `src/environments/environment.ts` (dev) และ `environment.prod.ts` (production build)
+— ค่า dev ตั้งเป็น `http://localhost:3000/api` ไว้แล้ว ไม่ต้องแก้ถ้ารัน backend ที่พอร์ตเดิม
+
+เปิด `http://localhost:4200` แล้วใช้งานได้เลย (frontend + backend ต้องรันพร้อมกันคนละ terminal)
 
 ## ฟีเจอร์หลัก
 
@@ -87,7 +112,13 @@ hosting ซึ่งมักเสียเงินเพิ่ม) ไฟล�
   ใน `src/db.ts` (ปกติ `pg` จะคืนเป็น string เพื่อกัน precision loss)
 - PDF generation เรียก python script ผ่าน `child_process` (เหตุผล: ใช้ weasyprint ที่ทดสอบแล้วว่า
   render ภาษาไทยได้ดี แทนการพึ่งพา headless-Chrome ฝั่ง Node ซึ่งโหลด binary หนักและ setup ยากกว่า)
-- ยังไม่มีระบบ authentication — ก่อน deploy ใช้งานจริงควรเพิ่ม login (เช่น JWT หรือ Supabase Auth) เพื่อจำกัดสิทธิ์แก้ไขข้อมูล
+- ระบบล็อกอินเป็น PIN เดียวที่ทุกคนในบริษัทใช้ร่วมกัน (ไม่ใช่ระบบผู้ใช้แยกรายบุคคล) ตั้งได้จากหน้าตั้งค่าบริษัทในแอป
+  หรือ ENV `ABM_ACCESS_PIN` — ถ้าไม่ตั้งไว้เลยทั้งคู่ แอปจะไม่บังคับล็อกอิน (ดูรายละเอียดใน `src/routes/auth.ts`)
+- ข้อมูลสำรองทั้งระบบส่งเป็นอีเมลอัตโนมัติผ่าน Brevo API (HTTPS) ไม่ใช่ SMTP ตรง ๆ เพราะ hosting ฟรีหลายเจ้า
+  (รวมถึง Render) บล็อกพอร์ต SMTP ขาออกทั้งหมด — ต้องตั้ง `BREVO_API_KEY` และ verify อีเมลผู้ส่ง (`SMTP_USER`)
+  ไว้ในบัญชี Brevo ก่อน ดูรายละเอียดใน `.env.example`
+- endpoint `/api/ping` ไว้ให้ cron ภายนอกยิงถี่ ๆ (เช่นทุก 10 นาที) กันทั้ง Render free tier หลับ และกัน
+  Supabase free tier project pause จากการไม่มีการใช้ฐานข้อมูลเกิน 7 วัน
 - Import Excel รองรับเฉพาะ sheet Customers/Items (upsert ตาม id พร้อม sync sequence กันชนกับ id ที่สร้างใหม่)
   เอกสาร (Documents) ยังไม่รองรับ import เนื่องจากมีความสัมพันธ์ระหว่างตารางซับซ้อนกว่า ควรสร้างผ่านหน้าเว็บแทน
 - ไฟล์ `data/schema.sql` (เวอร์ชัน SQLite เดิม) เหลือไว้เป็นข้อมูลอ้างอิงเท่านั้น ไม่ได้ใช้งานแล้ว

@@ -88,6 +88,19 @@
           </div>
 
           <button type="button" class="btn-plain" (click)="resetColors()">คืนค่าสีเริ่มต้น</button>
+
+          <h3 style="margin-top: 22px">ธีมเอกสารเริ่มต้น</h3>
+          <p class="settings-panel-hint">ใช้เป็นค่าตั้งต้นตอนสร้างเอกสารใหม่ (เปลี่ยนเป็นรายเอกสารได้ในหน้าสร้าง/แก้ไขเอกสาร)</p>
+          <div class="theme-picker">
+            <button type="button" class="theme-option" [class.active]="form.default_theme !== 'minimal'" (click)="form.default_theme = 'modern'">
+              <span class="theme-swatch" [style.background]="form.invoice_color"></span>
+              <span>โมเดิร์น<br><small>มีสีตามประเภทเอกสาร</small></span>
+            </button>
+            <button type="button" class="theme-option" [class.active]="form.default_theme === 'minimal'" (click)="form.default_theme = 'minimal'">
+              <span class="theme-swatch theme-swatch-mono"></span>
+              <span>มินิมอล<br><small>ขาวดำ ไม่มีสี</small></span>
+            </button>
+          </div>
         </div>
 
         <!-- ============ ความปลอดภัย ============ -->
