@@ -15,25 +15,26 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { name, address, tax_id, phone, email } = req.body;
+  const { name, address, tax_id, phone, email, note } = req.body;
   if (!name) return res.status(400).json({ error: "ต้องระบุชื่อลูกค้า" });
   const r = await one(
-    `INSERT INTO customers (name, address, tax_id, phone, email)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [name, address ?? null, tax_id ?? null, phone ?? null, email ?? null]
+    `INSERT INTO customers (name, address, tax_id, phone, email, note)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [name, address ?? null, tax_id ?? null, phone ?? null, email ?? null, note ?? null]
   );
   res.status(201).json(r);
 });
 
 router.put("/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const { name, address, tax_id, phone, email } = req.body;
+  const { name, address, tax_id, phone, email, note } = req.body;
   await run(
     `UPDATE customers SET
        name = COALESCE($1, name), address = COALESCE($2, address),
-       tax_id = COALESCE($3, tax_id), phone = COALESCE($4, phone), email = COALESCE($5, email)
-     WHERE id = $6`,
-    [name ?? null, address ?? null, tax_id ?? null, phone ?? null, email ?? null, id]
+       tax_id = COALESCE($3, tax_id), phone = COALESCE($4, phone), email = COALESCE($5, email),
+       note = COALESCE($6, note)
+     WHERE id = $7`,
+    [name ?? null, address ?? null, tax_id ?? null, phone ?? null, email ?? null, note ?? null, id]
   );
   const r = await one("SELECT * FROM customers WHERE id = $1", [id]);
   if (!r) return res.status(404).json({ error: "ไม่พบลูกค้า" });

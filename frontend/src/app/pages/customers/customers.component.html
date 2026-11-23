@@ -12,6 +12,7 @@
       <label>เลขผู้เสียภาษี<input [(ngModel)]="form.tax_id" name="tax_id" /></label>
       <label>โทรศัพท์<input [(ngModel)]="form.phone" name="phone" /></label>
       <label>อีเมล<input [(ngModel)]="form.email" name="email" /></label>
+      <label>หมายเหตุ (ดูภายใน ไม่พิมพ์ลงเอกสาร)<textarea [(ngModel)]="form.note" name="note" rows="1"></textarea></label>
     </div>
     <button type="submit">+ เพิ่มลูกค้า</button>
   </form>
@@ -23,7 +24,7 @@
 <div class="table-card" *ngIf="!loading">
   <table>
     <thead>
-      <tr><th>ชื่อลูกค้า</th><th>เลขผู้เสียภาษี</th><th>โทรศัพท์</th><th>อีเมล</th><th></th></tr>
+      <tr><th>ชื่อลูกค้า</th><th>เลขผู้เสียภาษี</th><th>โทรศัพท์</th><th>อีเมล</th><th>หมายเหตุ</th><th></th></tr>
     </thead>
     <tbody>
       <tr *ngFor="let c of customers">
@@ -31,13 +32,14 @@
         <td class="mono">{{ c.tax_id || '-' }}</td>
         <td>{{ c.phone || '-' }}</td>
         <td>{{ c.email || '-' }}</td>
+        <td style="white-space:pre-line;color:var(--color-text-muted)">{{ c.note || '-' }}</td>
         <td style="display:flex;gap:4px">
           <button class="link link-primary" (click)="openEdit(c)">แก้ไข</button>
           <button class="link" (click)="requestDelete(c)">ลบ</button>
         </td>
       </tr>
       <tr *ngIf="customers.length === 0">
-        <td colspan="5" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีลูกค้า — เพิ่มลูกค้ารายแรกด้านบน</td>
+        <td colspan="6" style="text-align:center;color:#6b7878;padding:28px">ยังไม่มีลูกค้า — เพิ่มลูกค้ารายแรกด้านบน</td>
       </tr>
     </tbody>
   </table>
@@ -59,6 +61,7 @@
         <label>เลขผู้เสียภาษี<input [(ngModel)]="editForm.tax_id" name="edit_tax_id" /></label>
         <label>โทรศัพท์<input [(ngModel)]="editForm.phone" name="edit_phone" /></label>
         <label>อีเมล<input [(ngModel)]="editForm.email" name="edit_email" /></label>
+        <label>หมายเหตุ (ดูภายใน ไม่พิมพ์ลงเอกสาร)<textarea [(ngModel)]="editForm.note" name="edit_note" rows="1"></textarea></label>
       </div>
       <p class="error" *ngIf="editError">{{ editError }}</p>
       <div class="modal-actions">

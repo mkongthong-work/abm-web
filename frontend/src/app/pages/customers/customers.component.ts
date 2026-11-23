@@ -13,7 +13,7 @@ import { Customer } from '../../models/models';
 })
 export class CustomersComponent implements OnInit {
   customers: Customer[] = [];
-  form: Partial<Customer> = { name: '', address: '', tax_id: '', phone: '', email: '' };
+  form: Partial<Customer> = { name: '', address: '', tax_id: '', phone: '', email: '', note: '' };
   loading = false;
   error = '';
 
@@ -50,7 +50,7 @@ export class CustomersComponent implements OnInit {
     if (!this.form.name) return;
     this.api.addCustomer(this.form).subscribe({
       next: () => {
-        this.form = { name: '', address: '', tax_id: '', phone: '', email: '' };
+        this.form = { name: '', address: '', tax_id: '', phone: '', email: '', note: '' };
         this.load();
       },
       error: () => (this.error = 'เพิ่มลูกค้าไม่สำเร็จ'),
@@ -60,7 +60,7 @@ export class CustomersComponent implements OnInit {
   // -- แก้ไข --
   openEdit(c: Customer) {
     this.editing = c;
-    this.editForm = { name: c.name, address: c.address, tax_id: c.tax_id, phone: c.phone, email: c.email };
+    this.editForm = { name: c.name, address: c.address, tax_id: c.tax_id, phone: c.phone, email: c.email, note: c.note };
     this.editError = '';
   }
 

@@ -66,9 +66,9 @@ async function restoreReplace(payload: any) {
     // เขียนข้อมูลใหม่ (ตารางแม่ก่อนตารางลูก)
     for (const c of payload.customers || []) {
       await client.query(
-        `INSERT INTO customers (id, name, address, tax_id, phone, email, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, NOW()))`,
-        [c.id, c.name, c.address ?? null, c.tax_id ?? null, c.phone ?? null, c.email ?? null, c.created_at ?? null]
+        `INSERT INTO customers (id, name, address, tax_id, phone, email, note, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, NOW()))`,
+        [c.id, c.name, c.address ?? null, c.tax_id ?? null, c.phone ?? null, c.email ?? null, c.note ?? null, c.created_at ?? null]
       );
     }
     for (const it of payload.items || []) {
@@ -161,9 +161,9 @@ async function restoreMerge(payload: any) {
     for (const c of payload.customers || []) {
       if (await exists("SELECT 1 FROM customers WHERE id = $1", [c.id])) { customersSkipped++; continue; }
       await client.query(
-        `INSERT INTO customers (id, name, address, tax_id, phone, email, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, NOW()))`,
-        [c.id, c.name, c.address ?? null, c.tax_id ?? null, c.phone ?? null, c.email ?? null, c.created_at ?? null]
+        `INSERT INTO customers (id, name, address, tax_id, phone, email, note, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, NOW()))`,
+        [c.id, c.name, c.address ?? null, c.tax_id ?? null, c.phone ?? null, c.email ?? null, c.note ?? null, c.created_at ?? null]
       );
       customersAdded++;
     }

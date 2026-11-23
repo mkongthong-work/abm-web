@@ -30,6 +30,8 @@ export interface Customer {
   tax_id?: string;
   phone?: string;
   email?: string;
+  /** หมายเหตุภายในของลูกค้า — ไม่พิมพ์ลงเอกสาร */
+  note?: string;
 }
 
 export interface Item {

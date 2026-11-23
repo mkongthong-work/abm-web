@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS customers (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- หมายเหตุของลูกค้า (เก็บไว้ดูภายใน ไม่พิมพ์ลงเอกสาร/PDF)
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS note TEXT;
+
 -- รายการสินค้า/บริการ (แคตตาล็อกไว้เลือกใช้ซ้ำ)
 CREATE TABLE IF NOT EXISTS items (
     id              SERIAL PRIMARY KEY,
