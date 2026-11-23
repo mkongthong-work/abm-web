@@ -76,12 +76,6 @@
           </select>
         </label>
         <p class="field-error" *ngIf="!customerId">ต้องเลือกลูกค้าก่อนบันทึกเอกสาร</p>
-        <!-- หมายเหตุภายในของลูกค้า: โชว์ให้ผู้สร้างเอกสารเห็นเท่านั้น ไม่ถูกพิมพ์ลงเอกสาร/PDF/พรีวิว -->
-        <div class="doc-number-warning" *ngIf="selectedCustomer?.note" style="margin:10px 0 0">
-          <p style="margin:0"><strong>หมายเหตุลูกค้า</strong> (ดูภายใน ไม่แสดงบนเอกสาร)</p>
-          <p style="margin:4px 0 0;white-space:pre-line">{{ selectedCustomer?.note }}</p>
-        </div>
-
         <div class="grid" style="margin-top:12px">
           <label>
             วันที่ออกเอกสาร
@@ -261,6 +255,12 @@
           </div>
           <p style="font-size:11px;color:#a5aeae;margin:10px 0 0;text-align:right">({{ totalInWords }})</p>
         </div>
+      </div>
+
+      <!-- หมายเหตุภายในของลูกค้า: โชว์ให้ผู้สร้างเอกสารเห็นเท่านั้น ไม่ถูกพิมพ์ลงเอกสาร/PDF/พรีวิว -->
+      <div class="doc-number-warning" *ngIf="selectedCustomer?.note">
+        <p style="margin:0"><strong>หมายเหตุลูกค้า</strong> (ดูภายใน ไม่แสดงบนเอกสาร)</p>
+        <p style="margin:4px 0 0;white-space:pre-line">{{ selectedCustomer?.note }}</p>
       </div>
 
       <div class="card">
