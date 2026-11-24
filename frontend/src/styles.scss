@@ -1559,3 +1559,24 @@ button.btn-danger-solid:hover { background: #a5311f; }
   .page-header .page-actions button,
   .page-header .page-actions a { width: 100%; }
 }
+
+/* ============ ภ.พ.30 dashboard ============ */
+.vat-month-nav { display: flex; align-items: center; gap: 6px; }
+.vat-month-label { min-width: 130px; text-align: center; font-weight: 600; }
+.vat-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.vat-metric { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 12px 14px; }
+.vat-metric span { display: block; font-size: 12px; color: var(--color-text-soft); }
+.vat-metric b { font-size: 24px; font-weight: 600; }
+.vat-ok b { color: var(--color-primary); }
+.vat-warn b { color: var(--color-danger); }
+.vat-bar { height: 6px; background: var(--color-border); border-radius: 3px; margin-bottom: 6px; overflow: hidden; }
+.vat-bar > div { height: 100%; background: var(--color-primary); }
+.vat-deadline { font-size: 12px; color: var(--color-text-muted); margin-bottom: 12px; }
+.vat-deadline-late { color: var(--color-danger); }
+.vat-filters { display: flex; gap: 6px; margin-bottom: 10px; }
+.vat-check { width: 18px; height: 18px; padding: 0; cursor: pointer; accent-color: var(--color-primary); }
+.vat-date { width: 150px; padding: 5px 8px; }
+.vat-candidates { max-height: 260px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 8px; margin: 10px 0; }
+.vat-candidate { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
+.vat-candidate:last-child { border-bottom: 0; }
+.vat-empty { text-align: center; }

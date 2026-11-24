@@ -23,6 +23,8 @@ async function buildBackupPayload() {
   const documents = await many("SELECT * FROM documents ORDER BY id");
   const document_items = await many("SELECT * FROM document_items ORDER BY id");
   const document_defaults = await many("SELECT * FROM document_defaults ORDER BY company_id, doc_type");
+  const vat_filers = await many("SELECT * FROM vat_filers ORDER BY id");
+  const vat_filings = await many("SELECT id, customer_id, month, to_char(filed_at, 'YYYY-MM-DD') AS filed_at FROM vat_filings ORDER BY id");
 
   return {
     version: BACKUP_VERSION,
@@ -33,6 +35,8 @@ async function buildBackupPayload() {
     documents,
     document_items,
     document_defaults,
+    vat_filers,
+    vat_filings,
   };
 }
 
@@ -61,6 +65,8 @@ async function restoreReplace(payload: any) {
     await client.query("DELETE FROM documents");
     await client.query("DELETE FROM document_defaults");
     await client.query("DELETE FROM items");
+    await client.query("DELETE FROM vat_filings");
+    await client.query("DELETE FROM vat_filers");
     await client.query("DELETE FROM customers");
 
     // เขียนข้อมูลใหม่ (ตารางแม่ก่อนตารางลูก)
@@ -130,11 +136,26 @@ async function restoreReplace(payload: any) {
       );
     }
 
+    for (const v of payload.vat_filers || []) {
+      await client.query(
+        "INSERT INTO vat_filers (id, customer_id, start_month, end_month) VALUES ($1,$2,$3,$4)",
+        [v.id, v.customer_id, v.start_month, v.end_month ?? null]
+      );
+    }
+    for (const v of payload.vat_filings || []) {
+      await client.query(
+        "INSERT INTO vat_filings (id, customer_id, month, filed_at) VALUES ($1,$2,$3,$4)",
+        [v.id, v.customer_id, v.month, v.filed_at]
+      );
+    }
+
     // sync sequence กันชนกับ id ที่กู้คืนกลับมาแบบระบุเอง
     await client.query("SELECT setval('customers_id_seq', COALESCE((SELECT MAX(id) FROM customers), 1))");
     await client.query("SELECT setval('items_id_seq', COALESCE((SELECT MAX(id) FROM items), 1))");
     await client.query("SELECT setval('documents_id_seq', COALESCE((SELECT MAX(id) FROM documents), 1))");
     await client.query("SELECT setval('document_items_id_seq', COALESCE((SELECT MAX(id) FROM document_items), 1))");
+    await client.query("SELECT setval('vat_filers_id_seq', COALESCE((SELECT MAX(id) FROM vat_filers), 1))");
+    await client.query("SELECT setval('vat_filings_id_seq', COALESCE((SELECT MAX(id) FROM vat_filings), 1))");
 
     return {
       customers: { added: (payload.customers || []).length, skipped: 0 },
@@ -142,6 +163,8 @@ async function restoreReplace(payload: any) {
       documents: { added: (payload.documents || []).length, skipped: 0 },
       document_items: { added: (payload.document_items || []).length, skipped: 0 },
       document_defaults: { added: (payload.document_defaults || []).length, skipped: 0 },
+      vat_filers: { added: (payload.vat_filers || []).length, skipped: 0 },
+      vat_filings: { added: (payload.vat_filings || []).length, skipped: 0 },
     };
   });
 }
@@ -235,11 +258,33 @@ async function restoreMerge(payload: any) {
       defaultsAdded++;
     }
 
+    let vfAdded = 0, vfSkipped = 0, vgAdded = 0, vgSkipped = 0;
+    for (const v of payload.vat_filers || []) {
+      if (await exists("SELECT 1 FROM vat_filers WHERE id = $1", [v.id]) ||
+          !(await exists("SELECT 1 FROM customers WHERE id = $1", [v.customer_id]))) { vfSkipped++; continue; }
+      await client.query(
+        "INSERT INTO vat_filers (id, customer_id, start_month, end_month) VALUES ($1,$2,$3,$4)",
+        [v.id, v.customer_id, v.start_month, v.end_month ?? null]
+      );
+      vfAdded++;
+    }
+    for (const v of payload.vat_filings || []) {
+      if (await exists("SELECT 1 FROM vat_filings WHERE id = $1 OR (customer_id = $2 AND month = $3)", [v.id, v.customer_id, v.month]) ||
+          !(await exists("SELECT 1 FROM customers WHERE id = $1", [v.customer_id]))) { vgSkipped++; continue; }
+      await client.query(
+        "INSERT INTO vat_filings (id, customer_id, month, filed_at) VALUES ($1,$2,$3,$4)",
+        [v.id, v.customer_id, v.month, v.filed_at]
+      );
+      vgAdded++;
+    }
+
     // sync sequence กันชนกับ id ใหม่ที่เพิ่งเพิ่มเข้าไป (ของเดิมไม่ได้ถูกลบ MAX(id) จึงครอบคลุมทั้งของเก่า+ใหม่อยู่แล้ว)
     await client.query("SELECT setval('customers_id_seq', COALESCE((SELECT MAX(id) FROM customers), 1))");
     await client.query("SELECT setval('items_id_seq', COALESCE((SELECT MAX(id) FROM items), 1))");
     await client.query("SELECT setval('documents_id_seq', COALESCE((SELECT MAX(id) FROM documents), 1))");
     await client.query("SELECT setval('document_items_id_seq', COALESCE((SELECT MAX(id) FROM document_items), 1))");
+    await client.query("SELECT setval('vat_filers_id_seq', COALESCE((SELECT MAX(id) FROM vat_filers), 1))");
+    await client.query("SELECT setval('vat_filings_id_seq', COALESCE((SELECT MAX(id) FROM vat_filings), 1))");
 
     return {
       customers: { added: customersAdded, skipped: customersSkipped },
@@ -247,6 +292,8 @@ async function restoreMerge(payload: any) {
       documents: { added: documentsAdded, skipped: documentsSkipped },
       document_items: { added: documentItemsAdded, skipped: documentItemsSkipped },
       document_defaults: { added: defaultsAdded, skipped: defaultsSkipped },
+      vat_filers: { added: vfAdded, skipped: vfSkipped },
+      vat_filings: { added: vgAdded, skipped: vgSkipped },
     };
   });
 }

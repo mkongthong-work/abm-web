@@ -131,3 +131,24 @@ ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE document_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE document_defaults ENABLE ROW LEVEL SECURITY;
+
+-- ภ.พ.30: ช่วงเวลาที่ลูกค้าอยู่ในรายการ "ต้องยื่น ภ.พ.30 ให้" (เก็บเป็นช่วงเดือน 'YYYY-MM')
+-- end_month NULL = ยังยื่นต่อเนื่อง / มีค่า = เดือนสุดท้ายที่ต้องยื่น (เดือนก่อนหน้ายังแสดงในประวัติ)
+-- กลับมายื่นใหม่ = เพิ่มแถวช่วงใหม่ (ไม่ทำให้เดือนที่หยุดไปแล้วถูกนับเป็น "ยังไม่ยื่น")
+CREATE TABLE IF NOT EXISTS vat_filers (
+    id           SERIAL PRIMARY KEY,
+    customer_id  INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    start_month  TEXT NOT NULL,
+    end_month    TEXT,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- บันทึกว่ายื่น ภ.พ.30 ของลูกค้าเดือนไหนแล้ว (มีแถว = ยื่นแล้ว)
+CREATE TABLE IF NOT EXISTS vat_filings (
+    id           SERIAL PRIMARY KEY,
+    customer_id  INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    month        TEXT NOT NULL,
+    filed_at     DATE NOT NULL DEFAULT CURRENT_DATE,
+    UNIQUE (customer_id, month)
+);
+ALTER TABLE vat_filers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vat_filings ENABLE ROW LEVEL SECURITY;

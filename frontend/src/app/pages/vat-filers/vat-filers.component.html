@@ -1,0 +1,56 @@
+<div class="page-header">
+  <div>
+    <div class="page-title">ลูกค้า ภ.พ.30</div>
+    <div class="page-meta">{{ activeCount }} ราย ที่ยื่นอยู่ในปัจจุบัน</div>
+  </div>
+  <button type="button" (click)="openAdd()">+ เพิ่มลูกค้า</button>
+</div>
+
+<p class="error" *ngIf="error">{{ error }}</p>
+
+<div class="card" *ngIf="adding">
+  <h3>เพิ่มลูกค้าเข้ารายการ ภ.พ.30</h3>
+  <div class="grid">
+    <label>ค้นหาลูกค้า<input [(ngModel)]="search" name="search" placeholder="ชื่อหรือเลขผู้เสียภาษี" /></label>
+    <label>เริ่มยื่นตั้งแต่เดือน<input type="month" [(ngModel)]="startMonth" name="start" /></label>
+  </div>
+  <div class="vat-candidates">
+    <div class="vat-candidate" *ngFor="let c of candidates">
+      <span style="white-space:pre-line">{{ c.name }} <span class="mono" style="color:var(--color-text-muted)">{{ c.tax_id }}</span></span>
+      <button type="button" class="btn-ghost" (click)="add(c)" [disabled]="!startMonth">เพิ่ม</button>
+    </div>
+    <p *ngIf="candidates.length === 0" style="color:var(--color-text-muted)">ไม่พบลูกค้าที่เพิ่มได้</p>
+  </div>
+  <div class="modal-actions"><button type="button" class="btn-ghost" (click)="adding = false">ปิด</button></div>
+</div>
+
+<p *ngIf="loading">กำลังโหลด...</p>
+<div class="table-card" *ngIf="!loading">
+  <table>
+    <thead><tr><th>ลูกค้า</th><th>เลขผู้เสียภาษี</th><th>ช่วงที่ยื่น</th><th></th></tr></thead>
+    <tbody>
+      <tr *ngFor="let f of filers" [style.opacity]="f.end_month ? 0.6 : 1">
+        <td style="font-weight:600;white-space:pre-line">{{ f.name }}</td>
+        <td>
+          <span class="mono">{{ f.tax_id || '-' }}</span>
+          <button type="button" class="link link-primary" *ngIf="f.tax_id" (click)="copyTax(f)">{{ copiedId === f.id ? 'คัดลอกแล้ว' : 'คัดลอก' }}</button>
+        </td>
+        <td>{{ period(f) }}</td>
+        <td><button type="button" class="link" *ngIf="!f.end_month" (click)="requestStop(f)">หยุดยื่น</button></td>
+      </tr>
+      <tr *ngIf="filers.length === 0">
+        <td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:28px">ยังไม่มีลูกค้า — กด "เพิ่มลูกค้า" เพื่อเริ่มต้น</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" *ngIf="confirm" (click)="confirm = null">
+  <div class="modal-card confirm-card" (click)="$event.stopPropagation()">
+    <p class="confirm-message">{{ confirm.message }}</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" (click)="confirm = null">ยกเลิก</button>
+      <button type="button" class="btn-danger-solid" (click)="confirm.onConfirm()">{{ confirm.confirmLabel }}</button>
+    </div>
+  </div>
+</div>

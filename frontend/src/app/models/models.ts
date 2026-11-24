@@ -149,3 +149,21 @@ export interface DocumentDetail {
   vat: number;
   total: number;
 }
+
+/** แถวใน Dashboard ภ.พ.30 ของเดือนที่เลือก (filed_at มีค่า = ยื่นแล้ว) */
+export interface VatDashboardRow {
+  customer_id: number;
+  name: string;
+  tax_id?: string;
+  filed_at: string | null;
+}
+
+/** ช่วงเวลาที่ลูกค้าอยู่ในรายการต้องยื่น ภ.พ.30 (end_month null = ยังยื่นต่อเนื่อง) */
+export interface VatFiler {
+  id: number;
+  customer_id: number;
+  name: string;
+  tax_id?: string;
+  start_month: string;
+  end_month: string | null;
+}

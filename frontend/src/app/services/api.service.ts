@@ -6,6 +6,8 @@ import { AuthService } from './auth.service';
 import {
   Company,
   Customer,
+  VatDashboardRow,
+  VatFiler,
   Item,
   DocumentSummary,
   DocumentDetail,
@@ -38,6 +40,23 @@ export class ApiService {
   }
   updateCompany(payload: Partial<Company>): Observable<Company> {
     return this.http.put<Company>(`${this.base}/company`, payload);
+  }
+
+  // -- ภ.พ.30 --
+  getVatDashboard(month: string): Observable<VatDashboardRow[]> {
+    return this.http.get<VatDashboardRow[]>(`${this.base}/vat/dashboard`, { params: { month } });
+  }
+  setVatFiling(customer_id: number, month: string, filed: boolean, filed_at?: string): Observable<any> {
+    return this.http.put(`${this.base}/vat/filings`, { customer_id, month, filed, filed_at });
+  }
+  getVatFilers(): Observable<VatFiler[]> {
+    return this.http.get<VatFiler[]>(`${this.base}/vat/filers`);
+  }
+  addVatFiler(customer_id: number, start_month: string): Observable<any> {
+    return this.http.post(`${this.base}/vat/filers`, { customer_id, start_month });
+  }
+  stopVatFiler(id: number, end_month: string): Observable<any> {
+    return this.http.post(`${this.base}/vat/filers/${id}/stop`, { end_month });
   }
 
   // -- customers --

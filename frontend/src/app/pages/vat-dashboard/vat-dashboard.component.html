@@ -1,0 +1,64 @@
+<div class="page-header">
+  <div>
+    <div class="page-title">สถานะการยื่น ภ.พ.30</div>
+    <div class="page-meta">ติ๊กเมื่อยื่นให้ลูกค้าแล้วในเดือนนั้น</div>
+  </div>
+  <div class="vat-month-nav">
+    <button type="button" class="btn-ghost" (click)="shift(-1)" aria-label="เดือนก่อน">&lsaquo;</button>
+    <span class="vat-month-label">{{ monthLabel }}</span>
+    <button type="button" class="btn-ghost" (click)="shift(1)" aria-label="เดือนถัดไป">&rsaquo;</button>
+    <button type="button" class="btn-ghost" *ngIf="month !== thisMonth" (click)="goThisMonth()">เดือนนี้</button>
+  </div>
+</div>
+
+<p class="error" *ngIf="error">{{ error }}</p>
+<p *ngIf="loading">กำลังโหลด...</p>
+
+<ng-container *ngIf="!loading">
+  <div class="vat-empty card" *ngIf="total === 0">
+    <p>ยังไม่มีลูกค้าที่ต้องยื่น ภ.พ.30 ในเดือนนี้</p>
+    <a routerLink="/vat-filers" class="btn-ghost">จัดการลูกค้า ภ.พ.30</a>
+  </div>
+
+  <ng-container *ngIf="total > 0">
+    <div class="vat-metrics">
+      <div class="vat-metric"><span>ต้องยื่นทั้งหมด</span><b>{{ total }}</b></div>
+      <div class="vat-metric vat-ok"><span>ยื่นแล้ว</span><b>{{ done }}</b></div>
+      <div class="vat-metric vat-warn"><span>ยังไม่ยื่น</span><b>{{ todo }}</b></div>
+    </div>
+    <div class="vat-bar"><div [style.width.%]="percent"></div></div>
+    <div class="vat-deadline" [class.vat-deadline-late]="overdue">ยื่นแล้ว {{ percent }}% · {{ deadlineText }}</div>
+
+    <div class="vat-filters">
+      <button type="button" class="badge status-chip badge-all" [class.active]="filter === 'all'" (click)="filter = 'all'">ทั้งหมด</button>
+      <button type="button" class="badge status-chip badge-overdue" [class.active]="filter === 'todo'" (click)="filter = 'todo'">ยังไม่ยื่น</button>
+      <button type="button" class="badge status-chip badge-paid" [class.active]="filter === 'done'" (click)="filter = 'done'">ยื่นแล้ว</button>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr><th style="width:44px"></th><th>ลูกค้า</th><th>เลขผู้เสียภาษี</th><th>สถานะ</th><th>วันที่ยื่น</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of visible">
+            <td><input type="checkbox" class="vat-check" [checked]="!!r.filed_at" (change)="toggle(r, $any($event.target).checked)" [attr.aria-label]="'ยื่นแล้ว ' + r.name" /></td>
+            <td style="font-weight:600;white-space:pre-line">{{ r.name }}</td>
+            <td>
+              <span class="mono">{{ r.tax_id || '-' }}</span>
+              <button type="button" class="link link-primary" *ngIf="r.tax_id" (click)="copyTax(r)">{{ copiedId === r.customer_id ? 'คัดลอกแล้ว' : 'คัดลอก' }}</button>
+            </td>
+            <td><span class="badge" [ngClass]="r.filed_at ? 'badge-paid' : 'badge-overdue'">{{ r.filed_at ? 'ยื่นแล้ว' : 'ยังไม่ยื่น' }}</span></td>
+            <td>
+              <input type="date" class="vat-date" *ngIf="r.filed_at" [value]="r.filed_at" (change)="changeDate(r, $any($event.target).value)" />
+              <span *ngIf="!r.filed_at" style="color:var(--color-text-muted)">-</span>
+            </td>
+          </tr>
+          <tr *ngIf="visible.length === 0">
+            <td colspan="5" style="text-align:center;color:var(--color-text-muted);padding:28px">ไม่มีรายการ</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+</ng-container>
