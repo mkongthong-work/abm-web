@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
 import { Company } from '../../models/models';
 
 const THAI_MONTHS_SHORT = [
@@ -72,7 +73,7 @@ export class SettingsComponent implements OnInit {
   /** confirmPhrase: ถ้าตั้งไว้ ต้องพิมพ์ข้อความนี้ให้ตรงก่อนถึงจะกดยืนยันได้ (กันมือลั่นสำหรับ action ที่ย้อนกลับไม่ได้) */
   confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void; confirmPhrase?: string } | null = null;
 
-  constructor(public api: ApiService) {}
+  constructor(public api: ApiService, private toast: ToastService) {}
 
   ngOnInit() {
     this.load();
@@ -153,7 +154,7 @@ export class SettingsComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.error = 'โหลดข้อมูลบริษัทไม่สำเร็จ';
+        this.toast.error('โหลดข้อมูลบริษัทไม่สำเร็จ');
         this.loading = false;
       },
     });
@@ -165,7 +166,6 @@ export class SettingsComponent implements OnInit {
     this.newPinInput = '';
     this.confirmPinInput = '';
     this.pinError = '';
-    this.error = '';
     this.saved = false;
   }
 
@@ -180,10 +180,9 @@ export class SettingsComponent implements OnInit {
 
   submit() {
     if (!this.form.name || !this.form.name.trim()) {
-      this.error = 'กรุณากรอกชื่อบริษัท';
+      this.toast.error('กรุณากรอกชื่อบริษัท');
       return;
     }
-    this.error = '';
     this.pinError = '';
 
     const payload: Partial<Company> = { ...this.form };
@@ -227,7 +226,7 @@ export class SettingsComponent implements OnInit {
         if (changingPin && err?.status === 400) {
           this.pinError = err?.error?.error || 'เปลี่ยนรหัส PIN ไม่สำเร็จ';
         } else {
-          this.error = 'บันทึกข้อมูลไม่สำเร็จ';
+          this.toast.error('บันทึกข้อมูลไม่สำเร็จ');
         }
         this.saving = false;
       },

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
 import { Item } from '../../models/models';
 
 @Component({
@@ -25,7 +26,7 @@ export class ItemsComponent implements OnInit {
   // -- ยืนยัน (ใช้ร่วมกันทั้งบันทึกแก้ไขและลบ) --
   confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void } | null = null;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private toast: ToastService) {}
 
   ngOnInit() {
     this.load();
@@ -39,7 +40,7 @@ export class ItemsComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.error = 'โหลดข้อมูลสินค้าไม่สำเร็จ';
+        this.toast.error('โหลดข้อมูลสินค้าไม่สำเร็จ');
         this.loading = false;
       },
     });
@@ -52,7 +53,7 @@ export class ItemsComponent implements OnInit {
         this.form = { name: '', unit: 'ชิ้น', unit_price: 0, description: '' };
         this.load();
       },
-      error: () => (this.error = 'เพิ่มสินค้าไม่สำเร็จ'),
+      error: () => (this.toast.error('เพิ่มสินค้าไม่สำเร็จ')),
     });
   }
 
@@ -116,7 +117,7 @@ export class ItemsComponent implements OnInit {
       },
       error: () => {
         this.confirm = null;
-        this.error = 'ลบรายการไม่สำเร็จ';
+        this.toast.error('ลบรายการไม่สำเร็จ');
       },
     });
   }

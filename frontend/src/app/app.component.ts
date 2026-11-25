@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiService } from './services/api.service';
 import { LoadingService } from './services/loading.service';
 import { AuthService } from './services/auth.service';
+import { ToastService } from './services/toast.service';
 
 @Component({
   selector: 'app-root',
@@ -26,7 +27,8 @@ export class AppComponent {
   constructor(
     public api: ApiService,
     public loading: LoadingService,
-    public auth: AuthService
+    public auth: AuthService,
+    public toast: ToastService
   ) {}
 
   submitPin() {

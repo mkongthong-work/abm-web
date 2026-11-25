@@ -1580,3 +1580,11 @@ button.btn-danger-solid:hover { background: #a5311f; }
 .vat-candidate { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
 .vat-candidate:last-child { border-bottom: 0; }
 .vat-empty { text-align: center; }
+
+/* ============ Toast ============ */
+.toast-stack { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 2000; max-width: min(380px, calc(100vw - 40px)); }
+.toast { padding: 10px 14px; border-radius: 10px; font-size: 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-left-width: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.12); cursor: pointer; animation: toast-in .18s ease-out; }
+.toast-success { border-left-color: var(--color-primary); }
+.toast-error { border-left-color: var(--color-danger); background: var(--color-danger-tint); color: var(--color-danger); }
+.toast-info { border-left-color: #2a6aa8; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

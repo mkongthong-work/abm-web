@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
 import { Customer, VatFiler } from '../../models/models';
 import { copyText, currentMonth, formatMonthShortTh } from '../../utils/vat-month';
 
@@ -25,7 +26,7 @@ export class VatFilersComponent implements OnInit {
 
   confirm: { message: string; confirmLabel: string; onConfirm: () => void } | null = null;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private toast: ToastService) {}
 
   ngOnInit() {
     this.load();
@@ -36,7 +37,7 @@ export class VatFilersComponent implements OnInit {
     this.loading = true;
     this.api.getVatFilers().subscribe({
       next: (d) => { this.filers = d; this.loading = false; },
-      error: () => { this.error = 'โหลดข้อมูลไม่สำเร็จ'; this.loading = false; },
+      error: () => { this.toast.error('โหลดข้อมูลไม่สำเร็จ'); this.loading = false; },
     });
   }
 
@@ -60,12 +61,11 @@ export class VatFilersComponent implements OnInit {
     this.adding = true;
     this.search = '';
     this.startMonth = this.thisMonth;
-    this.error = '';
   }
 
   add(c: Customer) {
     this.api.addVatFiler(c.id, this.startMonth).subscribe({
-      next: () => { this.adding = false; this.load(); },
+      next: () => { this.adding = false; this.toast.success('เพิ่มลูกค้าแล้ว'); this.load(); },
       error: (e) => (this.error = e?.error?.error || 'เพิ่มไม่สำเร็จ'),
     });
   }
@@ -76,8 +76,8 @@ export class VatFilersComponent implements OnInit {
       confirmLabel: 'หยุดยื่น',
       onConfirm: () => {
         this.api.stopVatFiler(f.id, this.thisMonth).subscribe({
-          next: () => { this.confirm = null; this.load(); },
-          error: () => { this.confirm = null; this.error = 'บันทึกไม่สำเร็จ'; },
+          next: () => { this.confirm = null; this.toast.success('หยุดยื่นแล้ว'); this.load(); },
+          error: () => { this.confirm = null; this.toast.error('บันทึกไม่สำเร็จ'); },
         });
       },
     };

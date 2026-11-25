@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
 import { VatDashboardRow } from '../../models/models';
 import {
   copyText, currentMonth, daysUntil, deadlineOf, formatDateTh, formatMonthTh, shiftMonth, todayISO,
@@ -25,7 +26,7 @@ export class VatDashboardComponent implements OnInit {
   error = '';
   copiedId: number | null = null;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private toast: ToastService) {}
 
   ngOnInit() {
     this.load();
@@ -64,10 +65,9 @@ export class VatDashboardComponent implements OnInit {
 
   load() {
     this.loading = true;
-    this.error = '';
     this.api.getVatDashboard(this.month).subscribe({
       next: (d) => { this.rows = d; this.loading = false; },
-      error: () => { this.error = 'โหลดข้อมูลไม่สำเร็จ'; this.loading = false; },
+      error: () => { this.toast.error('โหลดข้อมูลไม่สำเร็จ'); this.loading = false; },
     });
   }
 
@@ -75,7 +75,8 @@ export class VatDashboardComponent implements OnInit {
     const prev = r.filed_at;
     r.filed_at = checked ? todayISO() : null;
     this.api.setVatFiling(r.customer_id, this.month, checked, r.filed_at ?? undefined).subscribe({
-      error: () => { r.filed_at = prev; this.error = 'บันทึกไม่สำเร็จ'; },
+      next: () => this.toast.success(checked ? 'บันทึกว่ายื่นแล้ว' : 'ยกเลิกการติ๊กแล้ว'),
+      error: () => { r.filed_at = prev; this.toast.error('บันทึกไม่สำเร็จ (เซิร์ฟเวอร์อาจกำลังตื่น) ลองติ๊กอีกครั้ง'); },
     });
   }
 
@@ -84,7 +85,8 @@ export class VatDashboardComponent implements OnInit {
     const prev = r.filed_at;
     r.filed_at = value;
     this.api.setVatFiling(r.customer_id, this.month, true, value).subscribe({
-      error: () => { r.filed_at = prev; this.error = 'บันทึกวันที่ไม่สำเร็จ'; },
+      next: () => this.toast.success('แก้วันที่ยื่นแล้ว'),
+      error: () => { r.filed_at = prev; this.toast.error('บันทึกวันที่ไม่สำเร็จ'); },
     });
   }
 

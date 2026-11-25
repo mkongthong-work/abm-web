@@ -139,3 +139,7 @@
     กำลังโหลดข้อมูล<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
   </div>
 </div>
+
+<div class="toast-stack" aria-live="polite">
+  <div class="toast" *ngFor="let t of toast.toasts" [ngClass]="'toast-' + t.kind" role="status" (click)="toast.dismiss(t.id)">{{ t.message }}</div>
+</div>

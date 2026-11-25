@@ -3,6 +3,7 @@ import { Component, HostListener, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
 import { CreateDocumentPayload, DocumentSummary } from '../../models/models';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -96,7 +97,8 @@ export class DocumentsComponent implements OnInit {
 
   constructor(
     public api: ApiService,
-    private router: Router
+    private router: Router,
+    private toast: ToastService
   ) {}
 
   ngOnInit() {
@@ -358,7 +360,7 @@ export class DocumentsComponent implements OnInit {
     this.api.updateDocument(d.id, { status: key }).subscribe({
       error: () => {
         d.status = prev;
-        this.actionError = 'เปลี่ยนสถานะไม่สำเร็จ';
+        this.toast.error('เปลี่ยนสถานะไม่สำเร็จ');
       },
     });
   }
@@ -394,7 +396,7 @@ export class DocumentsComponent implements OnInit {
       },
       error: (err) => {
         this.confirm = null;
-        this.actionError = err?.error?.error || 'ยกเลิกเอกสารไม่สำเร็จ';
+        this.toast.error(err?.error?.error || 'ยกเลิกเอกสารไม่สำเร็จ');
       },
     });
   }
@@ -440,13 +442,13 @@ export class DocumentsComponent implements OnInit {
           },
           error: () => {
             this.duplicating = false;
-            this.actionError = 'ทำสำเนาเอกสารไม่สำเร็จ';
+            this.toast.error('ทำสำเนาเอกสารไม่สำเร็จ');
           },
         });
       },
       error: () => {
         this.duplicating = false;
-        this.actionError = 'ทำสำเนาเอกสารไม่สำเร็จ';
+        this.toast.error('ทำสำเนาเอกสารไม่สำเร็จ');
       },
     });
   }
@@ -497,7 +499,7 @@ export class DocumentsComponent implements OnInit {
       error: () => {
         this.bulkDeleting = false;
         this.confirm = null;
-        this.actionError = 'ลบเอกสารที่เลือกไม่สำเร็จ';
+        this.toast.error('ลบเอกสารที่เลือกไม่สำเร็จ');
       },
     });
   }

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { ToastService } from '../../services/toast.service';
 import { Customer } from '../../models/models';
 
 @Component({
@@ -26,7 +27,7 @@ export class CustomersComponent implements OnInit {
   // -- confirm popup (ใช้ร่วมกันทั้งยืนยันบันทึกและยืนยันลบ) --
   confirm: { message: string; confirmLabel: string; danger: boolean; onConfirm: () => void } | null = null;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private toast: ToastService) {}
 
   ngOnInit() {
     this.load();
@@ -40,7 +41,7 @@ export class CustomersComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.error = 'โหลดข้อมูลลูกค้าไม่สำเร็จ';
+        this.toast.error('โหลดข้อมูลลูกค้าไม่สำเร็จ');
         this.loading = false;
       },
     });
@@ -51,9 +52,10 @@ export class CustomersComponent implements OnInit {
     this.api.addCustomer(this.form).subscribe({
       next: () => {
         this.form = { name: '', address: '', tax_id: '', phone: '', email: '', note: '' };
+        this.toast.success('เพิ่มลูกค้าแล้ว');
         this.load();
       },
-      error: () => (this.error = 'เพิ่มลูกค้าไม่สำเร็จ'),
+      error: () => (this.toast.error('เพิ่มลูกค้าไม่สำเร็จ')),
     });
   }
 
@@ -89,6 +91,7 @@ export class CustomersComponent implements OnInit {
         this.saving = false;
         this.confirm = null;
         this.closeEdit();
+        this.toast.success('บันทึกการแก้ไขแล้ว');
         this.load();
       },
       error: () => {
@@ -113,11 +116,12 @@ export class CustomersComponent implements OnInit {
     this.api.deleteCustomer(id).subscribe({
       next: () => {
         this.confirm = null;
+        this.toast.success('ลบลูกค้าแล้ว');
         this.load();
       },
       error: () => {
         this.confirm = null;
-        this.error = 'ลบลูกค้าไม่สำเร็จ';
+        this.toast.error('ลบลูกค้าไม่สำเร็จ');
       },
     });
   }

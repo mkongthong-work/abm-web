@@ -224,7 +224,6 @@
 
     <div class="settings-savebar">
       <span class="settings-savebar-label">{{ dirtyLabel }}</span>
-      <p class="field-error" *ngIf="error" style="margin: 0 0 0 14px">{{ error }}</p>
       <div class="settings-savebar-actions">
         <button type="button" class="btn-ghost" [disabled]="!isDirty" (click)="discard()">ยกเลิกการแก้ไข</button>
         <button type="submit" [disabled]="saving || !isDirty">{{ saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}</button>
